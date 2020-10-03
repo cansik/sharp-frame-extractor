@@ -3,11 +3,12 @@ import math
 import os
 
 import cv2
+import numpy as np
 
 debug = False
 
 
-def extractImages(video_file, output_path, window_size_ms, output_format, crop_factor):
+def extractImages(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor):
     count = 0
     vidcap = cv2.VideoCapture(video_file)
     vidcap.read()
@@ -40,19 +41,31 @@ def extractImages(video_file, output_path, window_size_ms, output_format, crop_f
         frames = sorted(frames, key=lambda e: e[1], reverse=True)
         index, sharpness, mean, std = frames[0]
 
+        prefix = ""
+        if sharpness < min_sharpness:
+            print("WARNING: Sharpness not high enough (%.2fs)" % sharpness)
+            prefix = "WARNING_"
+
         # extract and store best frame
         vidcap.set(cv2.CAP_PROP_POS_FRAMES, index)
         success, image = vidcap.read()
 
-        frame_path = os.path.join(output_path, "frame%04d_%d%s" % (count, round(sharpness), output_format))
+        frame_path = os.path.join(output_path, "%sframe%04d_%d%s" % (prefix, count, round(sharpness), output_format))
         cv2.imwrite(frame_path, image)
 
         count += 1
 
 
 def extract_sharpness(frame_index, frame):
+    # extract best parameters for canny
+    v = np.median(frame)
+
+    sigma = 0.33
+    lower = int(max(0, (1.0 - sigma) * v))
+    upper = int(min(255, (1.0 + sigma) * v))
+
     # detect mean and standard deviation
-    edges = cv2.Canny(frame, 100, 200)
+    edges = cv2.Canny(frame, lower, upper)
     mean, std = cv2.meanStdDev(edges)
 
     # unpack values
@@ -63,6 +76,7 @@ def extract_sharpness(frame_index, frame):
 
     if debug:
         text = "Frame #%d Sharpness=%.2fs Mean=%.2fs StdDev=%.2fs" % (frame_index, sharpness, mean, std)
+        print("Canny: L=%d H=%d" % (lower, upper))
         print(text)
         colored_edges = cv2.merge((edges, edges, edges))
         cv2.putText(colored_edges, text, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
@@ -94,6 +108,11 @@ def extract_frame_batch(vidcap, start_ms, window_ms, crop_factor):
         # read next frame
         success, image = vidcap.read()
 
+        # check end of stream
+        if not success:
+            frame_available = False
+            continue
+
         # crop roi if necessary
         if crop_factor != 1.0:
             height, width, channels = image.shape
@@ -104,11 +123,6 @@ def extract_frame_batch(vidcap, start_ms, window_ms, crop_factor):
             y = round((height * 0.5) - (ch * 0.5))
 
             image = image[y:y + ch, x:x + cw]
-
-        # check end of stream
-        if not success:
-            frame_available = False
-            continue
 
         # extract metrics
         sharpness, mean, std = extract_sharpness(frame_index, image)
@@ -123,11 +137,12 @@ if __name__ == "__main__":
     a = argparse.ArgumentParser()
     a.add_argument("video", help="Path to video file")
     a.add_argument("output", help="Path to output folder")
-    a.add_argument("--window", default=100, help="Step size per evaluation")
+    a.add_argument("--window", default=250, help="Step size per evaluation")
+    a.add_argument("--min", default=60, help="Minimum sharpness level")
     a.add_argument("--format", default=".jpg", help="Frame output format")
-    a.add_argument("--crop", default=0.4, help="Crop to center ROI for sharpness detection")
+    a.add_argument("--crop", default=0.25, help="Crop to center ROI for sharpness detection")
     a.add_argument("--debug", default=False, help="Shows debug frames and information")
     args = a.parse_args()
 
     debug = bool(args.debug)
-    extractImages(args.video, args.output, int(args.window), args.format, float(args.crop))
+    extractImages(args.video, args.output, int(args.window), int(args.min), args.format, float(args.crop))
