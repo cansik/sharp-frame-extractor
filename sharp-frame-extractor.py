@@ -36,6 +36,7 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         frames = extract_frame_batch(vidcap, window_start_ms, window_size_ms, crop_factor)
 
         if len(frames) == 0:
+            print("ERROR: No frames extracted (maybe a video error!)")
             continue
 
         frames = sorted(frames, key=lambda e: e[1], reverse=True)
@@ -54,6 +55,20 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         cv2.imwrite(frame_path, image)
 
         count += 1
+
+
+def extract_sharpness_enhanced(frame_index, frame):
+    Gx = cv2.Sobel(frame, cv2.CV_32F, 1, 0)
+    Gy = cv2.Sobel(frame, cv2.CV_32F, 0, 1)
+
+    normGx = cv2.norm(Gx)
+    normGy = cv2.norm(Gy)
+
+    height, width, channels = frame.shape
+
+    sumSq = normGx * normGx + normGy * normGy
+    sharpness = 1. / (sumSq / (height * width) + 1e-6)
+    return (1.0 - sharpness) * 100, 0, 0
 
 
 def extract_sharpness(frame_index, frame):
@@ -125,7 +140,7 @@ def extract_frame_batch(vidcap, start_ms, window_ms, crop_factor):
             image = image[y:y + ch, x:x + cw]
 
         # extract metrics
-        sharpness, mean, std = extract_sharpness(frame_index, image)
+        sharpness, mean, std = extract_sharpness_enhanced(frame_index, image)
         results.append((frame_index, sharpness, mean, std))
 
         frame_available = True
