@@ -4,3 +4,4 @@ frames
 venv
 *.mov
 frames_sobel
+*.pyc

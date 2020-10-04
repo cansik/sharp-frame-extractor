@@ -1,15 +1,20 @@
 import argparse
 import math
 import os
+import time
 
 import cv2
 import numpy as np
 
+from ExponentialMovingAverage import ExponentialMovingAverage
+
 debug = False
 
 
-def extractImages(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor, extraction_method):
+def extractImages(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor,
+                  extraction_method):
     count = 0
+    ema = ExponentialMovingAverage(0.2)
     vidcap = cv2.VideoCapture(video_file)
     vidcap.read()
 
@@ -27,10 +32,11 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
           % (os.path.basename(video_file), fps, frame_count, video_length_ms / 1000, step_count))
 
     for i in range(0, step_count + 1):
+        start_time = time.time()
         window_start_ms = i * window_size_ms
         window_end_ms = window_start_ms + window_size_ms
-        print(
-            "analyzing batch %d/%d (%.2fs to %.2fs)..." % (i, step_count, window_start_ms / 1000, window_end_ms / 1000))
+        print("analyzing batch %d/%d (%.2fs to %.2fs)..."
+              % (i, step_count, window_start_ms / 1000, window_end_ms / 1000))
 
         # extracting frames and getting the one with the best metric
         frames = extract_frame_batch(vidcap, window_start_ms, window_size_ms, crop_factor, extraction_method)
@@ -54,6 +60,16 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         frame_path = os.path.join(output_path, "%sframe%04d_%d%s" % (prefix, count, round(sharpness), output_format))
         cv2.imwrite(frame_path, image)
 
+        # time measurements
+        end_time = time.time()
+        duration = end_time - start_time
+        ema.add(duration)
+
+        steps_left = step_count - i
+        time_left = ema.value * steps_left
+
+        if i is not 0 and i % 5 == 0:
+            print("Time Left: %ds" % (round(time_left)))
         count += 1
 
 
@@ -102,6 +118,7 @@ def extract_frame_batch(vidcap, start_ms, window_ms, crop_factor, extraction_met
         frame_available = True
 
     return results
+
 
 def extract_sharpness_sobel(frame_index, frame):
     Gx = cv2.Sobel(frame, cv2.CV_32F, 1, 0)
@@ -161,7 +178,8 @@ if __name__ == "__main__":
 
     extraction_method = extract_sharpness_canny
     if args.method == "sobel":
-    	extraction_method = extract_sharpness_sobel
+        extraction_method = extract_sharpness_sobel
 
     debug = bool(args.debug)
-    extractImages(args.video, args.output, int(args.window), int(args.min), args.format, float(args.crop), extraction_method)
+    extractImages(args.video, args.output, int(args.window), int(args.min), args.format, float(args.crop),
+                  extraction_method)
