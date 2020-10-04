@@ -69,7 +69,18 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         time_left = ema.value * steps_left
 
         if i != 0 and i % 5 == 0:
-            print("Time Left: %ds" % (round(time_left)))
+            total_seconds = round(time_left)
+            minutes = total_seconds // 60
+            seconds = total_seconds - (minutes * 60)
+
+            time_text = "Time left: "
+
+            if minutes > 0:
+                time_text += "%dm " % minutes
+            time_text += "%ds " % seconds
+            time_text += " Avg: %.2fs" % ema.value
+
+            print(time_text)
         count += 1
 
 
