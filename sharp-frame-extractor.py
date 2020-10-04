@@ -57,7 +57,7 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         vidcap.set(cv2.CAP_PROP_POS_FRAMES, index)
         success, image = vidcap.read()
 
-        frame_path = os.path.join(output_path, "%sframe%04d_%d%s" % (prefix, count, round(sharpness), output_format))
+        frame_path = os.path.join(output_path, "%sframe%04d_%d.%s" % (prefix, count, round(sharpness), output_format))
         cv2.imwrite(frame_path, image)
 
         # time measurements
@@ -178,13 +178,13 @@ def extract_sharpness_canny(frame_index, frame):
 if __name__ == "__main__":
     a = argparse.ArgumentParser()
     a.add_argument("video", help="Path to video file")
-    a.add_argument("output", help="Path to output folder")
-    a.add_argument("--window", default=250, help="Step size per evaluation")
-    a.add_argument("--min", default=60, help="Minimum sharpness level")
-    a.add_argument("--format", default=".jpg", help="Frame output format")
-    a.add_argument("--crop", default=0.25, help="Crop to center ROI for sharpness detection")
-    a.add_argument("--method", default="canny", help="Extraction algorithm (canny / sobel")
-    a.add_argument("--debug", default=False, help="Shows debug frames and information")
+    a.add_argument("--output", default='frames', help="Path to output folder")
+    a.add_argument("--window", default=250, type=int, help="Step size per evaluation")
+    a.add_argument("--min", default=60, type=float, help="Minimum sharpness level")
+    a.add_argument("--format", default="jpg", choices=['jpg', 'png', 'bmp', 'gif', 'tif'], help="Frame output format")
+    a.add_argument("--crop", default=0.25, type=float, help="Crop to center ROI for sharpness detection")
+    a.add_argument("--method", default="sobel", choices=['canny', 'sobel'], help="Extraction algorithm")
+    a.add_argument("--debug", action='store_true', help="Shows debug frames and information")
     args = a.parse_args()
 
     extraction_method = extract_sharpness_canny
@@ -192,5 +192,5 @@ if __name__ == "__main__":
         extraction_method = extract_sharpness_sobel
 
     debug = bool(args.debug)
-    extractImages(args.video, args.output, int(args.window), int(args.min), args.format, float(args.crop),
+    extractImages(args.video, args.output, int(args.window), float(args.min), args.format, float(args.crop),
                   extraction_method)
