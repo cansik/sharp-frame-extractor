@@ -68,7 +68,7 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         steps_left = step_count - i
         time_left = ema.value * steps_left
 
-        if i is not 0 and i % 5 == 0:
+        if i != 0 and i % 5 == 0:
             print("Time Left: %ds" % (round(time_left)))
         count += 1
 
