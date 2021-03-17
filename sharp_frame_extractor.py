@@ -44,12 +44,12 @@ def extract_images(video_file, output_path, window_size_ms, min_sharpness, outpu
     print("Video '%s' with %d FPS and %d frames (%.2fs) resulting in %d stills"
           % (os.path.basename(video_file), fps, frame_count, video_length_ms / 1000, step_count))
 
-    for i in range(0, step_count + 1):
+    for i in range(0, step_count):
         start_time = time.time()
         window_start_ms = i * window_size_ms
         window_end_ms = window_start_ms + window_size_ms
         print("analyzing batch %d/%d (%.2fs to %.2fs)..."
-              % (i, step_count, window_start_ms / 1000, window_end_ms / 1000))
+              % (i + 1, step_count, window_start_ms / 1000, window_end_ms / 1000))
 
         # extracting frames and getting the one with the best metric
         frames = extract_frame_batch(vidcap, window_start_ms, window_size_ms, crop_factor, extraction_method)
