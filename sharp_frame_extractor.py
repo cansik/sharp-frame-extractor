@@ -39,6 +39,8 @@ def extract_images(video_file, output_path, window_size_ms, min_sharpness, outpu
     video_length_ms = frame_count / fps * 1000
     step_count = math.ceil(video_length_ms / window_size_ms)
 
+    files = []
+
     print("Video '%s' with %d FPS and %d frames (%.2fs) resulting in %d stills"
           % (os.path.basename(video_file), fps, frame_count, video_length_ms / 1000, step_count))
 
@@ -74,6 +76,7 @@ def extract_images(video_file, output_path, window_size_ms, min_sharpness, outpu
         else:
             frame_path = os.path.join(output_path, "%sframe%04d.%s" % (prefix, count, output_format))
         cv2.imwrite(frame_path, image)
+        files.append(frame_path)
 
         # time measurements
         end_time = time.time()
@@ -97,6 +100,8 @@ def extract_images(video_file, output_path, window_size_ms, min_sharpness, outpu
 
             print(time_text)
         count += 1
+
+    return files
 
 
 def extract_frame_batch(vidcap, start_ms, window_ms, crop_factor, extraction_method):
