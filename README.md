@@ -10,7 +10,7 @@ pip install opencv-python
 ### Usage
 
 ```
-usage: sharp-frame-extractor.py [-h] [--output OUTPUT] [--window WINDOW]
+usage: sharp_frame_extractor.py [-h] [--output OUTPUT] [--window WINDOW]
                                 [--min MIN] [--format {jpg,png,bmp,gif,tif}]
                                 [--crop CROP] [--method {canny,sobel}]
                                 [--debug]

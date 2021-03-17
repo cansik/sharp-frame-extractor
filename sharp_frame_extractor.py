@@ -11,8 +11,8 @@ from ExponentialMovingAverage import ExponentialMovingAverage
 debug = False
 
 
-def extractImages(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor,
-                  extraction_method):
+def extract_images(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor,
+                   extraction_method):
     count = 0
     ema = ExponentialMovingAverage(0.2)
     vidcap = cv2.VideoCapture(video_file)
@@ -195,5 +195,5 @@ if __name__ == "__main__":
         extraction_method = extract_sharpness_sobel
 
     debug = bool(args.debug)
-    extractImages(args.video, args.output, int(args.window), float(args.min), args.format, float(args.crop),
-                  extraction_method)
+    extract_images(args.video, args.output, int(args.window), float(args.min), args.format, float(args.crop),
+                   extraction_method)
