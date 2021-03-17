@@ -57,7 +57,10 @@ def extractImages(video_file, output_path, window_size_ms, min_sharpness, output
         vidcap.set(cv2.CAP_PROP_POS_FRAMES, index)
         success, image = vidcap.read()
 
-        frame_path = os.path.join(output_path, "%sframe%04d_%d.%s" % (prefix, count, round(sharpness), output_format))
+        if debug:
+            frame_path = os.path.join(output_path, "%sframe%04d_%d.%s" % (prefix, count, round(sharpness), output_format))
+        else:
+            frame_path = os.path.join(output_path, "%sframe%04d.%s" % (prefix, count, output_format))
         cv2.imwrite(frame_path, image)
 
         # time measurements
