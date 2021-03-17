@@ -6,9 +6,20 @@ import time
 import cv2
 import numpy as np
 
-from ExponentialMovingAverage import ExponentialMovingAverage
-
 debug = False
+
+
+class ExponentialMovingAverage(object):
+    def __init__(self, alpha=0.1):
+        self.alpha = alpha
+        self.value = None
+
+    def add(self, value):
+        if self.value is None:
+            self.value = value
+            return
+
+        self.value = self.value + self.alpha * (value - self.value)
 
 
 def extract_images(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor,
@@ -58,7 +69,8 @@ def extract_images(video_file, output_path, window_size_ms, min_sharpness, outpu
         success, image = vidcap.read()
 
         if debug:
-            frame_path = os.path.join(output_path, "%sframe%04d_%d.%s" % (prefix, count, round(sharpness), output_format))
+            frame_path = os.path.join(output_path,
+                                      "%sframe%04d_%d.%s" % (prefix, count, round(sharpness), output_format))
         else:
             frame_path = os.path.join(output_path, "%sframe%04d.%s" % (prefix, count, output_format))
         cv2.imwrite(frame_path, image)
