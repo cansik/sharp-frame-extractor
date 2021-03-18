@@ -16,27 +16,50 @@ pip install opencv-python
     
 ### Usage
 
+Here you find an example command that extracts a frame every `300ms` into `./frames` folder:
+
+```bash
+python sharp_frame_extractor.py --window 300 test.mov
 ```
-usage: sharp_frame_extractor.py [-h] [--output OUTPUT] [--window WINDOW]
-                                [--min MIN] [--format {jpg,png,bmp,gif,tif}]
-                                [--crop CROP] [--method {canny,sobel}]
-                                [--debug]
+
+It is also possible to extract a fix number of frames out of the video file. This example extracts `30` frames.
+
+```bash
+python sharp_frame_extractor.py --frame-count 30 test.mov
+```
+
+#### Help
+
+```
+usage: sharp_frame_extractor.py [-h] [--method {canny,sobel}]
+                                [--window WINDOW] [--frame-count FRAME_COUNT]
+                                [--crop CROP] [--min MIN] [--output OUTPUT]
+                                [--format {jpg,png,bmp,gif,tif}] [--debug]
                                 video
 
+Extracts sharp frames from a video by using a time window to detect the
+sharpest frame.
+
 positional arguments:
-  video                 Path to video file
+  video                 Path to the video input file.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --output OUTPUT       Path to output folder
-  --window WINDOW       Step size per evaluation in ms
-  --min MIN             Minimum sharpness level
-  --format {jpg,png,bmp,gif,tif}
-                        Frame output format
-  --crop CROP           Crop to center ROI for sharpness detection
   --method {canny,sobel}
-                        Extraction algorithm
-  --debug               Shows debug frames and information
+                        Sharpness detection method.
+  --window WINDOW       Window in ms to slide over the video and detect
+                        sharpest frame from.
+  --frame-count FRAME_COUNT
+                        Amount of output frames. If the value is >0 the
+                        extractor calculates the window size to match the
+                        output frames.
+  --crop CROP           Crop to center factor for ROI sharpness detection.
+  --min MIN             Minimum sharpness level which is dependent on the
+                        detection method used.
+  --output OUTPUT       Path where to store the frames.
+  --format {jpg,png,bmp,gif,tif}
+                        Frame output format.
+  --debug               Shows debug frames and information.
 ```
 
 ### About
