@@ -217,7 +217,7 @@ if __name__ == "__main__":
                    help="Amount of output frames. "
                         "If the value is >0 the extractor calculates the window size to match the output frames.")
     a.add_argument("--crop", default=0.25, type=float, help="Crop to center factor for ROI  sharpness detection.")
-    a.add_argument("--min", default=100, type=float,
+    a.add_argument("--min", default=0, type=float,
                    help="Minimum sharpness level which is dependent on the detection method used.")
     a.add_argument("--output", default='frames', help="Path where to store the frames.")
     a.add_argument("--format", default="jpg", choices=['jpg', 'png', 'bmp', 'gif', 'tif'], help="Frame output format.")
