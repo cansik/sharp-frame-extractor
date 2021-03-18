@@ -23,7 +23,7 @@ class ExponentialMovingAverage(object):
 
 
 def extract_images(video_file, output_path, window_size_ms, min_sharpness, output_format, crop_factor,
-                   extraction_method):
+                   extraction_method, target_frame_count: int = -1):
     count = 0
     ema = ExponentialMovingAverage(0.2)
     vidcap = cv2.VideoCapture(video_file)
@@ -37,6 +37,12 @@ def extract_images(video_file, output_path, window_size_ms, min_sharpness, outpu
     fps = vidcap.get(cv2.CAP_PROP_FPS)
     frame_count = int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT))
     video_length_ms = frame_count / fps * 1000
+
+    # calculate window if frame_count is set
+    if target_frame_count > 0:
+        window_size_ms = video_length_ms / target_frame_count
+        print("set window size to %.2fms to create %d frames!" % (window_size_ms, target_frame_count))
+
     step_count = math.floor(video_length_ms / window_size_ms)
 
     files = []
@@ -201,14 +207,20 @@ def extract_sharpness_canny(frame_index, frame):
 
 
 if __name__ == "__main__":
-    a = argparse.ArgumentParser(description="Extracts sharp frames from a video by using a time window to detect the sharpest frame.")
+    a = argparse.ArgumentParser(
+        description="Extracts sharp frames from a video by using a time window to detect the sharpest frame.")
     a.add_argument("video", help="Path to the video input file.")
-    a.add_argument("--output", default='frames', help="Path where to store the frames.")
-    a.add_argument("--window", default=750, type=int, help="Window in ms to slide over the video and detect sharpest frame from.")
-    a.add_argument("--min", default=100, type=float, help="Minimum sharpness level which is dependent on the detection method used.")
-    a.add_argument("--format", default="jpg", choices=['jpg', 'png', 'bmp', 'gif', 'tif'], help="Frame output format.")
-    a.add_argument("--crop", default=0.25, type=float, help="Crop to center factor for ROI  sharpness detection.")
     a.add_argument("--method", default="canny", choices=['canny', 'sobel'], help="Sharpness detection method.")
+    a.add_argument("--window", default=750, type=int,
+                   help="Window in ms to slide over the video and detect sharpest frame from.")
+    a.add_argument("--frame-count", default=-1, type=int,
+                   help="Amount of output frames. "
+                        "If the value is >0 the extractor calculates the window size to match the output frames.")
+    a.add_argument("--crop", default=0.25, type=float, help="Crop to center factor for ROI  sharpness detection.")
+    a.add_argument("--min", default=100, type=float,
+                   help="Minimum sharpness level which is dependent on the detection method used.")
+    a.add_argument("--output", default='frames', help="Path where to store the frames.")
+    a.add_argument("--format", default="jpg", choices=['jpg', 'png', 'bmp', 'gif', 'tif'], help="Frame output format.")
     a.add_argument("--debug", action='store_true', help="Shows debug frames and information.")
     args = a.parse_args()
 
@@ -218,4 +230,4 @@ if __name__ == "__main__":
 
     debug = bool(args.debug)
     extract_images(args.video, args.output, int(args.window), float(args.min), args.format, float(args.crop),
-                   extraction_method)
+                   extraction_method, target_frame_count=args.frame_count)
