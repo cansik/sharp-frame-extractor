@@ -1,5 +1,5 @@
 # Sharp Frame Extractor
-Extracts sharp frames from a video by using a window to detect the sharpest frame.
+Extracts sharp frames from a video by using a time window to detect the sharpest frame.
 
 ### Prerequisites
 
@@ -22,7 +22,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --output OUTPUT       Path to output folder
-  --window WINDOW       Step size per evaluation
+  --window WINDOW       Step size per evaluation in ms
   --min MIN             Minimum sharpness level
   --format {jpg,png,bmp,gif,tif}
                         Frame output format
