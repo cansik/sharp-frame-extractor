@@ -1,7 +1,14 @@
 # Sharp Frame Extractor
 Extracts sharp frames from a video by using a time window to detect the sharpest frame.
 
+### Idea
+The idea of the extractor is to provide a simple tool to extract sharp frames from videos to be used in photogrammetry and volumetric capturing.
+The algorithm is currently based on the idea that the `standard deviation` represents a valid metric for how sharp a frame is. The value is calculated on an edge detection result which is by default created by a canny edge detection. The parameters for the canny edge detector are extracted per frame. To further enhance this detection, only the center of the frame is used (usually the focus of the scene).
+
+Further ideas can be implemented, for example a sobel based method is already available.
+
 ### Prerequisites
+The python script only depends on opencv-python which is prebuilt available on all common OS through pip:
 
 ```
 pip install opencv-python
