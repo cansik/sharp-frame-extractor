@@ -195,7 +195,7 @@ def extract_sharpness_canny(frame_index, frame):
     sharpness = mean * std
 
     if debug:
-        text = "Frame #%d Sharpness=%.2fs Mean=%.2fs StdDev=%.2fs" % (frame_index, sharpness, mean, std)
+        text = "Frame #%d Sharpness=%.2f Mean=%.2f StdDev=%.2f" % (frame_index, sharpness, mean, std)
         print("Canny: L=%d H=%d" % (lower, upper))
         print(text)
         colored_edges = cv2.merge((edges, edges, edges))
