@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from SFE.estimator.BaseEstimator import BaseEstimator
+from SharpFrameExtractor.estimator.BaseEstimator import BaseEstimator
 
 
 class SobelEstimator(BaseEstimator):

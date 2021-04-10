@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='sharp-frame-extractor',
     version='1.1.0',
-    packages=['SFE'],
+    packages=['SharpFrameExtractor'],
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
     author='Florian Bruggisser',

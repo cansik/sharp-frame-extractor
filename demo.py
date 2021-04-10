@@ -1,7 +1,7 @@
 import argparse
 
-from SFE.SharpFrameExtractor import SharpFrameExtractor
-from SFE import DefaultEstimators
+from SharpFrameExtractor.SharpFrameExtractor import SharpFrameExtractor
+from SharpFrameExtractor import DefaultEstimators
 
 if __name__ == "__main__":
     estimator_names = sorted(list(DefaultEstimators.keys()))
