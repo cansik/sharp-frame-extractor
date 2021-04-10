@@ -11,7 +11,7 @@ Further ideas can be implemented, for example a sobel based method is already av
 To install the package use the following pip command:
 
 ```
-pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.1.0
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.2.0
 ```
 
 ### Usage
