@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='sharp-frame-extractor',
-    version='1.1.0',
-    packages=['SharpFrameExtractor'],
+    version='1.2.0',
+    packages=find_packages(),
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
     author='Florian Bruggisser',
