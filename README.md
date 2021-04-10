@@ -11,9 +11,15 @@ Further ideas can be implemented, for example a sobel based method is already av
 The python script only depends on opencv-python which is prebuilt available on all common OS through pip:
 
 ```
-pip install opencv-python
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.0.0
 ```
-    
+
+### Installation
+
+```bash
+# pip install tbd
+```
+
 ### Usage
 
 Here you find an example command that extracts a frame every `300ms` into `./frames` folder:
@@ -31,11 +37,11 @@ python sharp_frame_extractor.py --frame-count 30 test.mov
 #### Help
 
 ```
-usage: sharp_frame_extractor.py [-h] [--method {canny,sobel}]
-                                [--window WINDOW] [--frame-count FRAME_COUNT]
-                                [--crop CROP] [--min MIN] [--output OUTPUT]
-                                [--format {jpg,png,bmp,gif,tif}] [--debug]
-                                video
+usage: extractor.py [-h] [--method {canny,sobel}] [--window WINDOW]
+                    [--frame-count FRAME_COUNT] [--crop CROP] [--min MIN]
+                    [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}]
+                    [--debug]
+                    video
 
 Extracts sharp frames from a video by using a time window to detect the
 sharpest frame.
@@ -46,7 +52,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --method {canny,sobel}
-                        Sharpness detection method.
+                        Sharpness detection method (Default canny).
   --window WINDOW       Window in ms to slide over the video and detect
                         sharpest frame from.
   --frame-count FRAME_COUNT
@@ -63,4 +69,4 @@ optional arguments:
 ```
 
 ### About
-Written by cansik 2020.
+MIT License - Copyright (c) 2021
