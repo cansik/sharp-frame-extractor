@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing
 
 from SharpFrameExtractor.SharpFrameExtractor import SharpFrameExtractor
 from SharpFrameExtractor import DefaultEstimators
@@ -21,14 +22,16 @@ if __name__ == "__main__":
                    help="Minimum sharpness level which is dependent on the detection method used.")
     a.add_argument("--output", default='frames', help="Path where to store the frames.")
     a.add_argument("--format", default="jpg", choices=['jpg', 'png', 'bmp', 'gif', 'tif'], help="Frame output format.")
+    a.add_argument("--cpu-count", default=multiprocessing.cpu_count(), type=int,
+                   help="How many cpu's are used for the extraction (by default all).")
     a.add_argument("--debug", action='store_true', help="Shows debug frames and information.")
     args = a.parse_args()
 
-    with DefaultEstimators[args.method] as estimator:
-        extractor = SharpFrameExtractor(estimator=estimator,
-                                        min_sharpness=float(args.min),
-                                        crop_factor=float(args.crop),
-                                        output_format=args.format)
-        extractor.extract_images(args.video, args.output,
-                                 window_size_ms=int(args.window),
-                                 target_frame_count=args.frame_count)
+    extractor = SharpFrameExtractor(estimator=DefaultEstimators[args.method],
+                                    min_sharpness=float(args.min),
+                                    crop_factor=float(args.crop),
+                                    output_format=args.format,
+                                    cpu_count=args.cpu_count)
+    extractor.extract(args.video, args.output,
+                      window_size_ms=int(args.window),
+                      target_frame_count=args.frame_count)

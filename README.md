@@ -11,7 +11,7 @@ Further ideas can be implemented, for example a sobel based method is already av
 To install the package use the following pip command:
 
 ```
-pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.2.0
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.3.0
 ```
 
 ### Usage
@@ -33,7 +33,8 @@ python demo.py --frame-count 30 test.mov
 ```
 usage: demo.py [-h] [--method {canny,sobel}] [--window WINDOW]
                [--frame-count FRAME_COUNT] [--crop CROP] [--min MIN]
-               [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}] [--debug]
+               [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}]
+               [--cpu-count CPU_COUNT] [--debug]
                video
 
 Extracts sharp frames from a video by using a time window to detect the
@@ -58,8 +59,12 @@ optional arguments:
   --output OUTPUT       Path where to store the frames.
   --format {jpg,png,bmp,gif,tif}
                         Frame output format.
+  --cpu-count CPU_COUNT
+                        How many cpu's are used for the extraction (by default
+                        all).
   --debug               Shows debug frames and information.
 
+Process finished with exit code 0
 ```
 
 ### About

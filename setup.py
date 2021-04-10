@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sharp-frame-extractor',
-    version='1.2.0',
+    version='1.3.0',
     packages=find_packages(),
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
