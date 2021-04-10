@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from estimator.BaseEstimator import BaseEstimator
+from SFE.estimator.BaseEstimator import BaseEstimator
 
 
 class CannyEstimator(BaseEstimator):

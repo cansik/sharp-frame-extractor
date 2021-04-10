@@ -1,10 +1,10 @@
 import argparse
 
-from SharpFrameExtractor import SharpFrameExtractor
-from estimator import estimators
+from SFE.SharpFrameExtractor import SharpFrameExtractor
+from SFE import DefaultEstimators
 
 if __name__ == "__main__":
-    estimator_names = sorted(list(estimators.keys()))
+    estimator_names = sorted(list(DefaultEstimators.keys()))
 
     a = argparse.ArgumentParser(
         description="Extracts sharp frames from a video by using a time window to detect the sharpest frame.")
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     a.add_argument("--debug", action='store_true', help="Shows debug frames and information.")
     args = a.parse_args()
 
-    with estimators[args.method] as estimator:
+    with DefaultEstimators[args.method] as estimator:
         extractor = SharpFrameExtractor(estimator=estimator,
                                         min_sharpness=float(args.min),
                                         crop_factor=float(args.crop),

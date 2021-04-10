@@ -8,16 +8,10 @@ The algorithm is currently based on the idea that the `standard deviation` repre
 Further ideas can be implemented, for example a sobel based method is already available.
 
 ### Prerequisites
-The python script only depends on opencv-python which is prebuilt available on all common OS through pip:
+To install the package use the following pip command:
 
 ```
 pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.0.0
-```
-
-### Installation
-
-```bash
-# pip install tbd
 ```
 
 ### Usage
@@ -25,23 +19,22 @@ pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.0.0
 Here you find an example command that extracts a frame every `300ms` into `./frames` folder:
 
 ```bash
-python sharp_frame_extractor.py --window 300 test.mov
+python demo.py --window 300 test.mov
 ```
 
 It is also possible to extract a fix number of frames out of the video file. This example extracts `30` frames.
 
 ```bash
-python sharp_frame_extractor.py --frame-count 30 test.mov
+python demo.py --frame-count 30 test.mov
 ```
 
 #### Help
 
 ```
-usage: extractor.py [-h] [--method {canny,sobel}] [--window WINDOW]
-                    [--frame-count FRAME_COUNT] [--crop CROP] [--min MIN]
-                    [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}]
-                    [--debug]
-                    video
+usage: demo.py [-h] [--method {canny,sobel}] [--window WINDOW]
+               [--frame-count FRAME_COUNT] [--crop CROP] [--min MIN]
+               [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}] [--debug]
+               video
 
 Extracts sharp frames from a video by using a time window to detect the
 sharpest frame.
@@ -66,6 +59,7 @@ optional arguments:
   --format {jpg,png,bmp,gif,tif}
                         Frame output format.
   --debug               Shows debug frames and information.
+
 ```
 
 ### About

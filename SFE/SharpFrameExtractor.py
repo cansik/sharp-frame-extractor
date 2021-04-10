@@ -4,8 +4,8 @@ import time
 
 import cv2
 
-from estimator import BaseEstimator
-from utils.ExponentialMovingAverage import ExponentialMovingAverage
+from SFE.estimator.BaseEstimator import BaseEstimator
+from SFE.utils.ExponentialMovingAverage import ExponentialMovingAverage
 
 
 class SharpFrameExtractor:
