@@ -63,8 +63,6 @@ optional arguments:
                         How many cpu's are used for the extraction (by default
                         all).
   --debug               Shows debug frames and information.
-
-Process finished with exit code 0
 ```
 
 ### About
