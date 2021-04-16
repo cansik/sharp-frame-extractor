@@ -1,10 +1,10 @@
 .idea
-banana.mov
 frames
 venv
+testvenv
 *.mov
-frames_sobel
 *.pyc
 *.mp4
-wohlen
-zhrise
+build
+sharp_frame_extractor.egg-info
+dist

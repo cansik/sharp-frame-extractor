@@ -11,7 +11,7 @@ Further ideas can be implemented, for example a sobel based method is already av
 To install the package use the following pip command:
 
 ```
-pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.3.0
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.4.0
 ```
 
 ### Usage
@@ -19,19 +19,19 @@ pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.3.0
 Here you find an example command that extracts a frame every `300ms` into `./frames` folder:
 
 ```bash
-python demo.py --window 300 test.mov
+python -m sharp-frame-extractor --window 300 test.mov
 ```
 
 It is also possible to extract a fix number of frames out of the video file. This example extracts `30` frames.
 
 ```bash
-python demo.py --frame-count 30 test.mov
+python -m sharp-frame-extractor --frame-count 30 test.mov
 ```
 
 #### Help
 
 ```
-usage: demo.py [-h] [--method {canny,sobel}] [--window WINDOW]
+usage: sharp-frame-extractor.py [-h] [--method {canny,sobel}] [--window WINDOW]
                [--frame-count FRAME_COUNT] [--crop CROP] [--min MIN]
                [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}]
                [--cpu-count CPU_COUNT] [--debug]
