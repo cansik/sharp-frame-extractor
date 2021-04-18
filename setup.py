@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-NAME = 'SharpFrameExtractor'
+NAME = 'sharp_frame_extractor'
 
 required_packages = find_packages()
 
