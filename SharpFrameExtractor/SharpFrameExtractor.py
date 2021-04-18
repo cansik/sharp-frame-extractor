@@ -15,12 +15,14 @@ class SharpFrameExtractor:
                  min_sharpness=-1,
                  crop_factor=0.25,
                  output_format="jpg",
-                 cpu_count=multiprocessing.cpu_count()):
+                 cpu_count=multiprocessing.cpu_count(),
+                 preview=False):
         self.estimator = estimator
         self.min_sharpness = min_sharpness
         self.crop_factor = crop_factor
         self.output_format = output_format
         self.cpu_count = cpu_count
+        self.preview = preview
 
     def extract(self, video_file, output_path, window_size_ms, target_frame_count: int = -1):
         start_time = time.time()
@@ -28,7 +30,7 @@ class SharpFrameExtractor:
         vidcap.read()
 
         # prepare paths
-        if not os.path.exists(output_path):
+        if not os.path.exists(output_path) and not self.preview:
             os.makedirs(output_path)
 
         # prepare vars
@@ -45,6 +47,10 @@ class SharpFrameExtractor:
 
         print("Video '%s' with %d FPS and %d frames (%.2fs) resulting in %d stills"
               % (os.path.basename(video_file), fps, frame_count, video_length_ms / 1000, step_count))
+
+        if self.preview:
+            print("Sharp Frame Extractor running in preview mode!")
+            exit(0)
 
         # create windows
         windows = []
