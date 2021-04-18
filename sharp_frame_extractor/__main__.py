@@ -1,8 +1,8 @@
 import argparse
 import multiprocessing
 
-from SharpFrameExtractor.SharpFrameExtractor import SharpFrameExtractor
-from SharpFrameExtractor import DefaultEstimators
+from sharp_frame_extractor import DefaultEstimators
+from sharp_frame_extractor.SharpFrameExtractor import SharpFrameExtractor
 
 if __name__ == "__main__":
     estimator_names = sorted(list(DefaultEstimators.keys()))

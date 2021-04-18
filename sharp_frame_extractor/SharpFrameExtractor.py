@@ -7,8 +7,8 @@ from multiprocessing import Pool
 import cv2
 import psutil as psutil
 
-from SharpFrameExtractor.SFEWorker import init_worker, extract
-from SharpFrameExtractor.estimator.BaseEstimator import BaseEstimator
+from sharp_frame_extractor.SFEWorker import init_worker, extract
+from sharp_frame_extractor.estimator.BaseEstimator import BaseEstimator
 
 
 class SharpFrameExtractor:

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from SharpFrameExtractor.estimator.BaseEstimator import BaseEstimator
+from sharp_frame_extractor.estimator.BaseEstimator import BaseEstimator
 
 
 class CannyEstimator(BaseEstimator):

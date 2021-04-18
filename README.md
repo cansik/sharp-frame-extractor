@@ -19,13 +19,13 @@ pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.5.0
 Here you find an example command that extracts a frame every `300ms` into `./frames` folder:
 
 ```bash
-python -m sharp-frame-extractor --window 300 test.mov
+python -m sharp_frame_extractor --window 300 test.mov
 ```
 
 It is also possible to extract a fix number of frames out of the video file. This example extracts `30` frames.
 
 ```bash
-python -m sharp-frame-extractor --frame-count 30 test.mov
+python -m sharp_frame_extractor --frame-count 30 test.mov
 ```
 
 #### Performance
@@ -34,13 +34,13 @@ The script tries to estimate the best CPU count to not overload the available RA
 
 ```bash
 # uses all available CPU
-python -m sharp-frame-extractor --frame-count 30 --force-cpu-count test.mov
+python -m sharp_frame_extractor --frame-count 30 --force-cpu-count test.mov
 ```
 
 #### Help
 
 ```
-usage: sharp-frame-extractor.py [-h] [--method {canny,sobel}]
+usage: sharp_frame_extractor [-h] [--method {canny,sobel}]
                                 [--window WINDOW] [--frame-count FRAME_COUNT]
                                 [--crop CROP] [--min MIN] [--output OUTPUT]
                                 [--format {jpg,png,bmp,gif,tif}]

@@ -1,7 +1,7 @@
 import os
 import cv2
 
-from SharpFrameExtractor.estimator.BaseEstimator import BaseEstimator
+from sharp_frame_extractor.estimator.BaseEstimator import BaseEstimator
 
 vidcap: cv2.VideoCapture = None
 estimator: BaseEstimator = None

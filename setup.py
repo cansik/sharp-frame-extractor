@@ -1,14 +1,12 @@
 from setuptools import setup, find_packages
 
-NAME = 'sharp-frame-extractor'
+NAME = 'SharpFrameExtractor'
 
 required_packages = find_packages()
-required_packages.append(NAME)
 
 setup(
-    app="%s.py" % NAME,
     name=NAME,
-    version='1.5.1',
+    version='1.6.0',
     packages=required_packages,
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
