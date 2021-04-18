@@ -23,7 +23,9 @@ if __name__ == "__main__":
     a.add_argument("--output", default='frames', help="Path where to store the frames.")
     a.add_argument("--format", default="jpg", choices=['jpg', 'png', 'bmp', 'gif', 'tif'], help="Frame output format.")
     a.add_argument("--cpu-count", default=multiprocessing.cpu_count(), type=int,
-                   help="How many cpu's are used for the extraction (by default all).")
+                   help="How many CPU's are used for the extraction "
+                        "(by default it is calculate by available RAM and frame count).")
+    a.add_argument("--force-cpu-count", action='store_true', help="Forces to use exact CPU number.")
     a.add_argument("--preview", action='store_true', help="Only shows how many frames would be extracted.")
     a.add_argument("--debug", action='store_true', help="Shows debug frames and information.")
     args = a.parse_args()
@@ -33,7 +35,8 @@ if __name__ == "__main__":
                                     crop_factor=float(args.crop),
                                     output_format=args.format,
                                     cpu_count=args.cpu_count,
-                                    preview=args.preview)
+                                    preview=args.preview,
+                                    force_cpu_count=args.force_cpu_count)
     extractor.extract(args.video, args.output,
                       window_size_ms=int(args.window),
                       target_frame_count=args.frame_count)

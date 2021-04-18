@@ -5,6 +5,7 @@ import time
 from multiprocessing import Pool
 
 import cv2
+import psutil as psutil
 
 from SharpFrameExtractor.SFEWorker import init_worker, extract
 from SharpFrameExtractor.estimator.BaseEstimator import BaseEstimator
@@ -16,6 +17,7 @@ class SharpFrameExtractor:
                  crop_factor=0.25,
                  output_format="jpg",
                  cpu_count=multiprocessing.cpu_count(),
+                 force_cpu_count=False,
                  preview=False):
         self.estimator = estimator
         self.min_sharpness = min_sharpness
@@ -23,11 +25,12 @@ class SharpFrameExtractor:
         self.output_format = output_format
         self.cpu_count = cpu_count
         self.preview = preview
+        self.force_cpu_count = force_cpu_count
 
     def extract(self, video_file, output_path, window_size_ms, target_frame_count: int = -1):
         start_time = time.time()
         vidcap = cv2.VideoCapture(video_file)
-        vidcap.read()
+        success, frame = vidcap.read()
 
         # prepare paths
         if not os.path.exists(output_path) and not self.preview:
@@ -65,8 +68,19 @@ class SharpFrameExtractor:
             windows.append((i, window_start_ms, window_end_ms))
         vidcap.release()
 
+        # calculate max processor count
+        # by using size estimation of video in ram
+        ram = psutil.virtual_memory()[1]
+        size_estimation_per_cpu = frame.shape[0] * frame.shape[1] * frame.shape[2] * frame_count
+        cpu_by_ram_capacity = math.floor(ram / size_estimation_per_cpu)
+        processor_count = min(self.cpu_count, step_count, cpu_by_ram_capacity)
+
+        if self.force_cpu_count:
+            processor_count = self.cpu_count
+
         # run multiprocessing
-        pool = Pool(processes=self.cpu_count, initializer=init_worker,
+        print("Using a pool of %d CPU's..." % processor_count)
+        pool = Pool(processes=processor_count, initializer=init_worker,
                     initargs=((video_file,
                                output_path,
                                self.estimator,

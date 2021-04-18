@@ -11,7 +11,7 @@ Further ideas can be implemented, for example a sobel based method is already av
 To install the package use the following pip command:
 
 ```
-pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.4.0
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.5.0
 ```
 
 ### Usage
@@ -28,14 +28,25 @@ It is also possible to extract a fix number of frames out of the video file. Thi
 python -m sharp-frame-extractor --frame-count 30 test.mov
 ```
 
+#### Performance
+
+The script tries to estimate the best CPU count to not overload the available RAM or the computer specifications. But it is possible to overwrite this estimation by the following flag:
+
+```bash
+# uses all available CPU
+python -m sharp-frame-extractor --frame-count 30 --force-cpu-count test.mov
+```
+
 #### Help
 
 ```
-usage: sharp-frame-extractor.py [-h] [--method {canny,sobel}] [--window WINDOW]
-               [--frame-count FRAME_COUNT] [--crop CROP] [--min MIN]
-               [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}]
-               [--cpu-count CPU_COUNT] [--debug]
-               video
+usage: sharp-frame-extractor.py [-h] [--method {canny,sobel}]
+                                [--window WINDOW] [--frame-count FRAME_COUNT]
+                                [--crop CROP] [--min MIN] [--output OUTPUT]
+                                [--format {jpg,png,bmp,gif,tif}]
+                                [--cpu-count CPU_COUNT] [--force-cpu-count]
+                                [--preview] [--debug]
+                                video
 
 Extracts sharp frames from a video by using a time window to detect the
 sharpest frame.
@@ -60,10 +71,12 @@ optional arguments:
   --format {jpg,png,bmp,gif,tif}
                         Frame output format.
   --cpu-count CPU_COUNT
-                        How many cpu's are used for the extraction (by default
-                        all).
+                        How many CPU's are used for the extraction (by default
+                        it is calculate by available RAM and frame count).
+  --force-cpu-count     Forces to use exact CPU number.
+  --preview             Only shows how many frames would be extracted.
   --debug               Shows debug frames and information.
 ```
 
 ### About
-MIT License - Copyright (c) 2021
+MIT License - Copyright (c) 2021 Florian Bruggisser

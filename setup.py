@@ -15,5 +15,5 @@ setup(
     author='Florian Bruggisser',
     author_email='github@broox.ch',
     description='Extracts sharp frames from a video by using a time window to detect the sharpest frame.',
-    install_requires=['wheel', 'opencv-python', 'numpy'],
+    install_requires=['wheel', 'opencv-python', 'numpy', 'psutil'],
 )
