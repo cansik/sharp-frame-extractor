@@ -8,8 +8,8 @@ required_packages.append(NAME)
 setup(
     app="%s.py" % NAME,
     name=NAME,
-    version='1.5.0',
-    packages=find_packages(),
+    version='1.5.1',
+    packages=required_packages,
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
     author='Florian Bruggisser',
