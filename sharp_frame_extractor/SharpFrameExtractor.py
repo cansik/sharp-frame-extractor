@@ -73,7 +73,7 @@ class SharpFrameExtractor:
         ram = psutil.virtual_memory()[1]
         size_estimation_per_cpu = frame.shape[0] * frame.shape[1] * frame.shape[2] * frame_count
         cpu_by_ram_capacity = math.floor(ram / size_estimation_per_cpu)
-        processor_count = min(self.cpu_count, step_count, cpu_by_ram_capacity)
+        processor_count = max(1, min(self.cpu_count, step_count, cpu_by_ram_capacity))
 
         if self.force_cpu_count:
             processor_count = self.cpu_count

@@ -6,7 +6,7 @@ required_packages = find_packages()
 
 setup(
     name=NAME,
-    version='1.6.1',
+    version='1.6.2',
     packages=required_packages,
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
