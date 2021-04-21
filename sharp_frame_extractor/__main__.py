@@ -1,5 +1,6 @@
 import argparse
 import multiprocessing
+import os
 
 from sharp_frame_extractor import DefaultEstimators
 from sharp_frame_extractor.SharpFrameExtractor import SharpFrameExtractor
@@ -38,6 +39,13 @@ if __name__ == "__main__":
                                     cpu_count=args.cpu_count,
                                     preview=args.preview,
                                     force_cpu_count=args.force_cpu_count)
+
+    # check if file exists
+    if not os.path.exists(args.video):
+        print("input %s does not exist!" % args.video)
+        exit(1)
+
     extractor.extract(args.video, args.output,
                       window_size_ms=int(args.window),
                       target_frame_count=args.frame_count)
+    exit(0)
