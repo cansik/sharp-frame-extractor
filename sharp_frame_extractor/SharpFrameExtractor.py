@@ -5,7 +5,6 @@ import time
 from multiprocessing import Pool
 
 import cv2
-import psutil as psutil
 import tqdm
 
 from sharp_frame_extractor.SFEWorker import init_worker, extract
