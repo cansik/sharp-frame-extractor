@@ -68,10 +68,13 @@ class SharpFrameExtractor:
             windows.append((i, window_start_ms, window_end_ms))
         vidcap.release()
 
+        # define buffer size
+        buffer_size = round(frame_count / len(windows) * 10)
+
         # calculate max processor count
         # by using size estimation of video in ram
         ram = psutil.virtual_memory()[1]
-        size_estimation_per_cpu = frame.shape[0] * frame.shape[1] * frame.shape[2] * frame_count
+        size_estimation_per_cpu = frame.shape[0] * frame.shape[1] * frame.shape[2] * buffer_size
         cpu_by_ram_capacity = math.floor(ram / size_estimation_per_cpu)
         processor_count = max(1, min(self.cpu_count, step_count, cpu_by_ram_capacity))
 
@@ -86,7 +89,8 @@ class SharpFrameExtractor:
                                self.estimator,
                                self.crop_factor,
                                self.output_format,
-                               self.min_sharpness),))
+                               self.min_sharpness,
+                               buffer_size),))
         results = pool.map(extract, windows)
         end_time = time.time()
 

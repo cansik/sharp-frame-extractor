@@ -13,8 +13,9 @@ min_sharpness: float = None
 
 def init_worker(params):
     global vidcap, estimator, crop_factor, output_path, output_format, min_sharpness
-    video_file, output_path, estimator, crop_factor, output_format, min_sharpness = params
+    video_file, output_path, estimator, crop_factor, output_format, min_sharpness, buffer_size = params
     vidcap = cv2.VideoCapture(video_file)
+    vidcap.set(cv2.CAP_PROP_BUFFERSIZE, buffer_size)
     estimator.setup()
 
 
