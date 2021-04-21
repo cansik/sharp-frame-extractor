@@ -23,8 +23,8 @@ def extract(window):
     i, window_start_ms, window_end_ms = window
     window_size_ms = window_end_ms - window_start_ms
 
-    print("analyzing batch (%.2fs to %.2fs)..."
-          % (window_start_ms / 1000, window_end_ms / 1000))
+    # print("analyzing batch (%.2fs to %.2fs)..."
+    #      % (window_start_ms / 1000, window_end_ms / 1000))
 
     # extracting frames and getting the one with the best metric
     frames = _analyze_frame_batch(vidcap, window_start_ms, window_size_ms)

@@ -6,6 +6,7 @@ from multiprocessing import Pool
 
 import cv2
 import psutil as psutil
+import tqdm
 
 from sharp_frame_extractor.SFEWorker import init_worker, extract
 from sharp_frame_extractor.estimator.BaseEstimator import BaseEstimator
@@ -69,29 +70,29 @@ class SharpFrameExtractor:
         vidcap.release()
 
         # define buffer size
-        buffer_size = round(frame_count / len(windows) * 10)
+        buffer_size = math.ceil(frame_count / len(windows) * 1.5)
 
         # calculate max processor count
-        # by using size estimation of video in ram
-        ram = psutil.virtual_memory()[1]
-        size_estimation_per_cpu = frame.shape[0] * frame.shape[1] * frame.shape[2] * buffer_size
-        cpu_by_ram_capacity = math.floor(ram / size_estimation_per_cpu)
-        processor_count = max(1, min(self.cpu_count, step_count, cpu_by_ram_capacity))
+        processor_count = max(1, min(self.cpu_count, step_count))
 
         if self.force_cpu_count:
             processor_count = self.cpu_count
 
         # run multiprocessing
-        print("Using a pool of %d CPU's..." % processor_count)
-        pool = Pool(processes=processor_count, initializer=init_worker,
-                    initargs=((video_file,
-                               output_path,
-                               self.estimator,
-                               self.crop_factor,
-                               self.output_format,
-                               self.min_sharpness,
-                               buffer_size),))
-        results = pool.map(extract, windows)
+        print("Using a pool of %d CPU's with buffer size %d..." % (processor_count, buffer_size))
+        results = []
+        with Pool(processes=processor_count, initializer=init_worker,
+                  initargs=((video_file,
+                             output_path,
+                             self.estimator,
+                             self.crop_factor,
+                             self.output_format,
+                             self.min_sharpness,
+                             buffer_size),)) as pool:
+            for res in tqdm.tqdm(pool.imap_unordered(extract, windows), total=len(windows), desc="frame extraction"):
+                name, sharpness = res
+                results.append(name)
+
         end_time = time.time()
 
         frames = [result[0] for result in results if result is not None]

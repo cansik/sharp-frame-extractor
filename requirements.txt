@@ -1,4 +1,4 @@
 wheel
 opencv-python
 numpy
-psutil
+tqdm
