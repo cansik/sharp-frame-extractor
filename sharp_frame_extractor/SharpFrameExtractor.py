@@ -89,6 +89,8 @@ class SharpFrameExtractor:
                              self.min_sharpness,
                              buffer_size),)) as pool:
             for res in tqdm.tqdm(pool.imap_unordered(extract, windows), total=len(windows), desc="frame extraction"):
+                if res is None:
+                    continue
                 name, sharpness = res
                 results.append(name)
 
