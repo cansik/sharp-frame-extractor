@@ -18,6 +18,7 @@ class SharpFrameExtractor:
                  output_format="jpg",
                  cpu_count=multiprocessing.cpu_count(),
                  force_cpu_count=False,
+                 extract_all=False,
                  preview=False):
         self.estimator = estimator
         self.min_sharpness = min_sharpness
@@ -26,6 +27,7 @@ class SharpFrameExtractor:
         self.cpu_count = cpu_count
         self.preview = preview
         self.force_cpu_count = force_cpu_count
+        self.extract_all = extract_all
 
     def extract(self, video_file, output_path, window_size_ms, target_frame_count: int = -1):
         start_time = time.time()
@@ -45,6 +47,11 @@ class SharpFrameExtractor:
         if target_frame_count > 0:
             window_size_ms = video_length_ms / target_frame_count
             print("set window size to %.2fms to create %d frames!" % (window_size_ms, target_frame_count))
+
+        # option to extract all the frames
+        if self.extract_all:
+            window_size_ms = video_length_ms / frame_count
+            print("extracting all %d frames!" % frame_count)
 
         step_count = math.floor(video_length_ms / window_size_ms)
 

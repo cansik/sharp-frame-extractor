@@ -19,6 +19,7 @@ if __name__ == "__main__":
     a.add_argument("--frame-count", default=-1, type=int,
                    help="Amount of output frames. "
                         "If the value is >0 the extractor calculates the window size to match the output frames.")
+    a.add_argument("--all", action='store_true', help="Extracts all the frames of the video.")
     a.add_argument("--crop", default=0.25, type=float, help="Crop to center factor for ROI  sharpness detection.")
     a.add_argument("--min", default=0, type=float,
                    help="Minimum sharpness level which is dependent on the detection method used.")
@@ -38,7 +39,8 @@ if __name__ == "__main__":
                                     output_format=args.format,
                                     cpu_count=args.cpu_count,
                                     preview=args.preview,
-                                    force_cpu_count=args.force_cpu_count)
+                                    force_cpu_count=args.force_cpu_count,
+                                    extract_all=args.all)
 
     # check if file exists
     if not os.path.exists(args.video):

@@ -20,7 +20,7 @@ You can read more about this example project over at [behance](https://www.behan
 To install the package use the following pip command:
 
 ```
-pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.6.4
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.6.5
 ```
 
 ### Usage
@@ -49,13 +49,13 @@ python -m sharp_frame_extractor --frame-count 30 --force-cpu-count test.mov
 #### Help
 
 ```
-usage: sharp_frame_extractor [-h] [--method {canny,sobel}]
-                                [--window WINDOW] [--frame-count FRAME_COUNT]
-                                [--crop CROP] [--min MIN] [--output OUTPUT]
-                                [--format {jpg,png,bmp,gif,tif}]
-                                [--cpu-count CPU_COUNT] [--force-cpu-count]
-                                [--preview] [--debug]
-                                video
+usage: sharp_frame_extractor [-h] [--method {canny,sobel}] [--window WINDOW]
+                             [--frame-count FRAME_COUNT] [--all] [--crop CROP]
+                             [--min MIN] [--output OUTPUT]
+                             [--format {jpg,png,bmp,gif,tif}]
+                             [--cpu-count CPU_COUNT] [--force-cpu-count]
+                             [--preview] [--debug]
+                             video
 
 Extracts sharp frames from a video by using a time window to detect the
 sharpest frame.
@@ -73,6 +73,7 @@ optional arguments:
                         Amount of output frames. If the value is >0 the
                         extractor calculates the window size to match the
                         output frames.
+  --all                 Extracts all the frames of the video.
   --crop CROP           Crop to center factor for ROI sharpness detection.
   --min MIN             Minimum sharpness level which is dependent on the
                         detection method used.

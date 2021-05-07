@@ -9,7 +9,7 @@ with open('requirements.txt') as f:
 
 setup(
     name=NAME,
-    version='1.6.4',
+    version='1.6.5',
     packages=required_packages,
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
