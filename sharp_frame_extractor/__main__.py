@@ -5,7 +5,8 @@ import os
 from sharp_frame_extractor import DefaultEstimators
 from sharp_frame_extractor.SharpFrameExtractor import SharpFrameExtractor
 
-if __name__ == "__main__":
+
+def parse_arguments():
     estimator_names = sorted(list(DefaultEstimators.keys()))
 
     a = argparse.ArgumentParser(
@@ -31,8 +32,11 @@ if __name__ == "__main__":
     a.add_argument("--force-cpu-count", action='store_true', help="Forces to use exact CPU number.")
     a.add_argument("--preview", action='store_true', help="Only shows how many frames would be extracted.")
     a.add_argument("--debug", action='store_true', help="Shows debug frames and information.")
-    args = a.parse_args()
+    return a.parse_args()
 
+
+def main():
+    args = parse_arguments()
     extractor = SharpFrameExtractor(estimator=DefaultEstimators[args.method],
                                     min_sharpness=float(args.min),
                                     crop_factor=float(args.crop),
@@ -51,3 +55,7 @@ if __name__ == "__main__":
                       window_size_ms=int(args.window),
                       target_frame_count=args.frame_count)
     exit(0)
+
+
+if __name__ == "__main__":
+    main()
