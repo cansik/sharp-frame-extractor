@@ -20,7 +20,7 @@ You can read more about this example project over at [behance](https://www.behan
 To install the package use the following pip command:
 
 ```
-pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.6.5
+pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.6.6
 ```
 
 ### Usage
@@ -28,13 +28,13 @@ pip install git+https://github.com/cansik/sharp-frame-extractor.git@1.6.5
 Here you find an example command that extracts a frame every `300ms` into `./frames` folder:
 
 ```bash
-python -m sharp_frame_extractor --window 300 test.mov
+sfextract --window 300 test.mov
 ```
 
 It is also possible to extract a fix number of frames out of the video file. This example extracts `30` frames.
 
 ```bash
-python -m sharp_frame_extractor --frame-count 30 test.mov
+sfextract --frame-count 30 test.mov
 ```
 
 #### Performance
@@ -43,19 +43,18 @@ The script tries to estimate the best CPU count to not overload the available RA
 
 ```bash
 # uses all available CPU
-python -m sharp_frame_extractor --frame-count 30 --force-cpu-count test.mov
+sfextract --frame-count 30 --force-cpu-count test.mov
 ```
 
 #### Help
 
 ```
-usage: sharp_frame_extractor [-h] [--method {canny,sobel}] [--window WINDOW]
-                             [--frame-count FRAME_COUNT] [--all] [--crop CROP]
-                             [--min MIN] [--output OUTPUT]
-                             [--format {jpg,png,bmp,gif,tif}]
-                             [--cpu-count CPU_COUNT] [--force-cpu-count]
-                             [--preview] [--debug]
-                             video
+usage: sfextract [-h] [--method {canny,sobel}] [--window WINDOW]
+                 [--frame-count FRAME_COUNT] [--all] [--crop CROP] [--min MIN]
+                 [--output OUTPUT] [--format {jpg,png,bmp,gif,tif}]
+                 [--cpu-count CPU_COUNT] [--force-cpu-count] [--preview]
+                 [--debug]
+                 video
 
 Extracts sharp frames from a video by using a time window to detect the
 sharpest frame.

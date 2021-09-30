@@ -9,7 +9,7 @@ if __name__ == "__main__":
     estimator_names = sorted(list(DefaultEstimators.keys()))
 
     a = argparse.ArgumentParser(
-        prog="sharp_frame_extractor",
+        prog="sfextract",
         description="Extracts sharp frames from a video by using a time window to detect the sharpest frame.")
     a.add_argument("video", help="Path to the video input file.")
     a.add_argument("--method", default=estimator_names[0], choices=estimator_names,

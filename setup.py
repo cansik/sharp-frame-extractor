@@ -9,8 +9,13 @@ with open('requirements.txt') as f:
 
 setup(
     name=NAME,
-    version='1.6.5',
+    version='1.6.6',
     packages=required_packages,
+    entry_points={
+        'console_scripts': [
+            'sfextract = sharp_frame_extractor.__main__:main',
+        ],
+    },
     url='https://github.com/cansik/sharp-frame-extractor',
     license='MIT License',
     author='Florian Bruggisser',

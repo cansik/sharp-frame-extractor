@@ -8,3 +8,5 @@ testvenv
 build
 sharp_frame_extractor.egg-info
 dist
+venv3
+movies
