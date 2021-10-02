@@ -32,6 +32,7 @@ class SharpFrameExtractor:
     def extract(self, video_file, output_path, window_size_ms, target_frame_count: int = -1):
         start_time = time.time()
         vidcap = cv2.VideoCapture(video_file)
+
         success, frame = vidcap.read()
 
         # prepare paths
@@ -78,8 +79,8 @@ class SharpFrameExtractor:
         # define buffer size
         buffer_size = math.ceil(frame_count / len(windows) * 1.5)
 
-        # calculate max processor count
-        processor_count = max(1, min(self.cpu_count, step_count))
+        # calculate max processor count (by default take 25% of CPU's)
+        processor_count = max(1, min(round(self.cpu_count * 0.25), step_count))
 
         if self.force_cpu_count:
             processor_count = self.cpu_count
