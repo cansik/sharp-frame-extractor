@@ -15,7 +15,7 @@ class SharpFrameExtractor:
     def __init__(self, estimator: BaseEstimator,
                  min_sharpness=-1,
                  crop_factor=0.25,
-                 output_format="jpg",
+                 output_format="png",
                  cpu_count=multiprocessing.cpu_count(),
                  force_cpu_count=False,
                  extract_all=False,
