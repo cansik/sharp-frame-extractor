@@ -57,7 +57,7 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
     if options.frame_interval_seconds:
         stream_block_size = int(total_video_frames / (options.frame_interval_seconds * video_fps))
     elif options.total_frame_count:
-        stream_block_size = int(total_video_frames / options.total_frame_count)
+        stream_block_size = int(total_video_frames / options.total_frame_count) + 1
     else:
         progress.print("Please provide either frame-interval-seconds or total-frame_count.", style="bold yellow")
         progress.stop_task(task_id)
@@ -81,7 +81,8 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
         if output_file_name.exists():
             output_file_name.unlink(missing_ok=True)
 
-        cv2.imwrite(str(output_file_name.absolute()), result.frame)
+        bgr_frame = cv2.cvtColor(result.frame, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(str(output_file_name.absolute()), bgr_frame)
         progress.update(task_id, advance=1)
 
     # start reading video file
