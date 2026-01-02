@@ -1,4 +1,0 @@
-wheel
-opencv-python
-numpy
-tqdm
