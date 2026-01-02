@@ -1,0 +1,13 @@
+[project]
+name = "sharp-frame-extractor"
+version = "0.1.0"
+description = "Extracts sharp frames from a video."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ffmpegio>=0.11.1",
+    "numpy>=2.4.0",
+    "opencv-python>=4.11.0.86",
+    "rich>=14.2.0",
+    "rich-argparse>=1.7.2",
+]
