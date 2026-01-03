@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sharp-frame-extractor"
 version = "2.0.0"
@@ -42,3 +46,9 @@ indent-style = "space"
 docstring-code-format = true
 
 exclude = []
+
+[tool.setuptools]
+packages = ["sharp_frame_extractor"]
+
+[project.scripts]
+sharp-frame-extractor = "sharp_frame_extractor.__main__:main"

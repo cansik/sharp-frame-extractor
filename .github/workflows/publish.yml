@@ -1,0 +1,82 @@
+name: Publish Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      publishReleases:
+        description: 'Publish to Releases'
+        required: false
+        default: 'true'
+      isPreRelease:
+        description: 'Is Pre-Release'
+        required: false
+        default: 'false'
+      isDraft:
+        description: 'Is Draft'
+        required: false
+        default: 'false'
+      publishPyPI:
+        description: 'Publish to PyPI'
+        required: false
+        default: 'true'
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Get library version
+        id: get_version
+        run: |
+          version=$(python - <<'EOF'
+          import tomllib
+          with open("pyproject.toml", "rb") as f:
+              print(tomllib.load(f)["project"]["version"])
+          EOF
+          )
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Installing Dependencies
+        run: |
+          uv sync --dev
+
+      - name: Build
+        run: |
+          make build
+
+      # upload dist
+      - name: Upload binaries to release
+        if: ${{ github.event.inputs.publishReleases == 'true' }}
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/*
+          tag: ${{ steps.get_version.outputs.version }}
+          release_name: "Version ${{ steps.get_version.outputs.version }}"
+          body: "Prebuilt package version ${{ steps.get_version.outputs.version }}."
+          overwrite: true
+          file_glob: true
+          prerelease: ${{ github.event.inputs.isPreRelease == 'true' }}
+          draft: ${{ github.event.inputs.isDraft == 'true' }}
+
+      # publish to PyPI
+      - name: Publish package to PyPI
+        if: ${{ github.event.inputs.publishPyPI == 'true' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}

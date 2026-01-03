@@ -14,3 +14,7 @@ lint:
 
 autoformat:
 	uv run --group lint ruff format . && uv run --group lint ruff check --fix .
+
+# Deployment
+build:
+	rm -rf dist build *.egg-info && uv build
