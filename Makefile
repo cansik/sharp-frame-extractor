@@ -1,6 +1,6 @@
-.PHONY: fmt fmt-check lint autoformat
+.PHONY: fmt fmt-check lint autoformat build
 
-default: fmt-check
+default: build
 
 # Code Style
 fmt:
