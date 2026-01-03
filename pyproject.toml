@@ -1,6 +1,6 @@
 [project]
 name = "sharp-frame-extractor"
-version = "0.1.0"
+version = "2.0.0"
 description = "Extracts sharp frames from a video."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -11,3 +11,34 @@ dependencies = [
     "rich>=14.2.0",
     "rich-argparse>=1.7.2",
 ]
+
+[dependency-groups]
+dev = [
+    { include-group = "lint" },
+]
+
+lint = [
+    "ruff>=0.14.8",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+indent-width = 4
+respect-gitignore = true
+
+exclude = []
+
+[tool.ruff.lint]
+# select = ["FA100", "UP006"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
+
+docstring-code-format = true
+
+exclude = []

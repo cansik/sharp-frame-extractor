@@ -46,12 +46,12 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
     video_info = video_streams[0]
 
     # extract video information
-    video_duration_seconds = float(video_info["duration"])
+    # video_duration_seconds = float(video_info["duration"])
     video_fps = float(video_info["frame_rate"])
     total_video_frames = int(video_info["nb_frames"])
-    video_frame_length_ms = 1000 / video_fps
-    video_width = int(video_info["width"])
-    video_height = int(video_info["height"])
+    # video_frame_length_ms = 1000 / video_fps
+    # video_width = int(video_info["width"])
+    # video_height = int(video_info["height"])
 
     # calculate stream block size
     if options.frame_interval_seconds is not None:
@@ -113,15 +113,18 @@ def cpu_count_fraction(factor: float, min_value: int = 1) -> int:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser("sfextract", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("inputs", nargs="+", help="Video input files.")
-    parser.add_argument("--outputs", nargs="*",
-                        help="Output directories for each input file. "
-                             "If empty, name of video file will be used as output directory. "
-                             "If only one is provided, it will be used as output directory for all videos.")
+    parser.add_argument(
+        "--outputs",
+        nargs="*",
+        help="Output directories for each input file. "
+        "If empty, name of video file will be used as output directory. "
+        "If only one is provided, it will be used as output directory for all videos.",
+    )
     parser.add_argument("--total-frames", type=float, default=100, help="Total frames to extract.")
-    parser.add_argument("--frame-window", type=float, default=None,
-                        help="Frame analysis window in seconds (overwrites total-frames).")
-    parser.add_argument("--max-video-threads", type=int, default=None,
-                        help="Max parallel videos to process.")
+    parser.add_argument(
+        "--frame-window", type=float, default=None, help="Frame analysis window in seconds (overwrites total-frames)."
+    )
+    parser.add_argument("--max-video-threads", type=int, default=None, help="Max parallel videos to process.")
     parser.add_argument("--max-analyzers", type=int, default=None, help="Max parallel analyzers.")
     return parser.parse_args()
 
@@ -155,16 +158,12 @@ def main():
             exit(1)
 
     # create options
-    default_options = ExtractionOptions(
-        frame_interval_seconds=frame_window,
-        total_frame_count=total_frames
-    )
+    default_options = ExtractionOptions(frame_interval_seconds=frame_window, total_frame_count=total_frames)
 
     # create tasks
     with console.status("creating tasks..."):
         tasks: list[ExtractionTask] = [
-            ExtractionTask(i.absolute(), o.absolute(), default_options)
-            for i, o in zip(input_paths, output_paths)
+            ExtractionTask(i.absolute(), o.absolute(), default_options) for i, o in zip(input_paths, output_paths)
         ]
 
     task_count = len(tasks)
@@ -179,10 +178,7 @@ def main():
     start_time = time.time()
     analyzer_pool.start()
     with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeRemainingColumn(),
-            MofNCompleteColumn()
+        TextColumn("[progress.description]{task.description}"), BarColumn(), TimeRemainingColumn(), MofNCompleteColumn()
     ) as progress:
         # Create an overall progress bar
         overall_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)

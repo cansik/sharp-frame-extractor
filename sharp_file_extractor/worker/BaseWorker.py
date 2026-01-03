@@ -29,7 +29,7 @@ class BaseWorker(Process, Generic[TTask, TResult], ABC):
         self.results: Queue = Queue(maxsize=task_queue_size)
 
         # Only in the main process do we maintain a futures dictionary and background thread.
-        if current_process().name == 'MainProcess':
+        if current_process().name == "MainProcess":
             self._futures: Dict[int, Future[TResult]] = {}
             self._task_counter = 0
             self._result_listener_thread = threading.Thread(target=self._result_listener, daemon=True)
@@ -112,6 +112,6 @@ class BaseWorker(Process, Generic[TTask, TResult], ABC):
     def __getstate__(self):
         state = self.__dict__.copy()
         # Remove non-pickleable attributes
-        state.pop('_result_listener_thread', None)
-        state.pop('_futures', None)
+        state.pop("_result_listener_thread", None)
+        state.pop("_futures", None)
         return state

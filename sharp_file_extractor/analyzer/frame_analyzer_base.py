@@ -19,7 +19,6 @@ class FrameAnalyzerResult:
 
 
 class FrameAnalyzerBase(ABC):
-
     @abstractmethod
     def reset_states(self):
         pass

@@ -7,7 +7,7 @@ from .BaseWorker import BaseWorker
 
 logger = logging.getLogger(__name__)
 
-TWorker = TypeVar('TWorker', bound=BaseWorker)
+TWorker = TypeVar("TWorker", bound=BaseWorker)
 
 
 class BaseWorkerPool(Generic[TWorker], ABC):

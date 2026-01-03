@@ -1,0 +1,31 @@
+name: Code Format Lint Check
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  ruff:
+    name: Ruff format + lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync (lint deps)
+        run: uv sync --frozen --group lint
+
+      - name: Ruff format check
+        run: make fmt-check
+
+      - name: Ruff lint
+        run: make lint
