@@ -6,7 +6,7 @@ from enum import Enum
 import cv2
 import numpy as np
 
-from sharp_file_extractor.analyzer.frame_analyzer_base import (
+from sharp_frame_extractor.analyzer.frame_analyzer_base import (
     FrameAnalyzerBase,
     FrameAnalyzerTask,
     FrameAnalyzerResult,

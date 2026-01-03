@@ -13,9 +13,9 @@ import numpy as np
 from rich.console import Console
 from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn, MofNCompleteColumn
 
-from sharp_file_extractor.analyzer.frame_analyzer_base import FrameAnalyzerTask, FrameAnalyzerResult
-from sharp_file_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
-from sharp_file_extractor.worker.Future import Future
+from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerTask, FrameAnalyzerResult
+from sharp_frame_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
+from sharp_frame_extractor.worker.Future import Future
 
 analyzer_pool: FrameAnalyzerWorkerPool | None = None
 
@@ -111,7 +111,7 @@ def cpu_count_fraction(factor: float, min_value: int = 1) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser("sfextract", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser("sharp-frame-extractor", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("inputs", nargs="+", help="Video input files.")
     parser.add_argument(
         "--outputs",
