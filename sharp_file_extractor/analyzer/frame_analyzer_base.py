@@ -12,6 +12,8 @@ class FrameAnalyzerTask:
 
 @dataclass
 class FrameAnalyzerResult:
+    block_index: int
+    frame_index: int
     frame: np.ndarray
     score: float
 

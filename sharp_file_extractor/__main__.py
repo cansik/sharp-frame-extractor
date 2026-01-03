@@ -1,10 +1,10 @@
 import argparse
+import math
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import timedelta
-from functools import partial
 from pathlib import Path
 
 import cv2
@@ -54,46 +54,46 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
     video_height = int(video_info["height"])
 
     # calculate stream block size
-    if options.frame_interval_seconds:
-        stream_block_size = int(total_video_frames / (options.frame_interval_seconds * video_fps))
-    elif options.total_frame_count:
-        stream_block_size = int(total_video_frames / options.total_frame_count) + 1
+    if options.frame_interval_seconds is not None:
+        stream_block_size = max(1, int(round(options.frame_interval_seconds * video_fps)))
+    elif options.total_frame_count is not None:
+        stream_block_size = max(1, int(math.ceil(total_video_frames / options.total_frame_count)))
     else:
         progress.print("Please provide either frame-interval-seconds or total-frame_count.", style="bold yellow")
         progress.stop_task(task_id)
         return
 
-    stream_block_size = max(1, stream_block_size)
-
     # ensure output path exists
     result_path.mkdir(parents=True, exist_ok=True)
 
     # setup progress bar
-    total_sub_tasks = total_video_frames / stream_block_size
+    total_sub_tasks = int(math.ceil(total_video_frames / stream_block_size))
     progress.update(task_id, total=total_sub_tasks, description=f"processing {task.video_path.name}")
 
     submitted_tasks: list[Future] = []
 
-    def on_task_finished(future: Future[FrameAnalyzerResult], index: int):
+    def on_task_finished(future: Future[FrameAnalyzerResult]):
         result = future.result()
-        output_file_name = task.result_path / f"frame-{index:05d}.png"
+        output_file_name = task.result_path / f"frame-{result.block_index:05d}.png"
 
         if output_file_name.exists():
             output_file_name.unlink(missing_ok=True)
 
-        bgr_frame = cv2.cvtColor(result.frame, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(str(output_file_name.absolute()), bgr_frame)
+        cv2.imwrite(str(output_file_name.absolute()), result.frame)
         progress.update(task_id, advance=1)
 
     # start reading video file
     block_index = 0
     with ffmpegio.open(str(video_path), "rv", blocksize=stream_block_size, pix_fmt="rgb24") as fin:
         for frames in fin:
-            video_frames: np.ndarray = frames
+            # convert rgb to bgr frames
+            frames_bgr = np.empty_like(frames)
+            for i in range(frames.shape[0]):
+                frames_bgr[i] = cv2.cvtColor(frames[i], cv2.COLOR_RGB2BGR)
 
             # analyze video block
-            worker_task = analyzer_pool.submit_task(FrameAnalyzerTask(block_index, video_frames))
-            worker_task.add_done_callback(partial(on_task_finished, index=block_index))
+            worker_task = analyzer_pool.submit_task(FrameAnalyzerTask(block_index, frames_bgr))
+            worker_task.add_done_callback(on_task_finished)
             submitted_tasks.append(worker_task)
 
             block_index += 1
@@ -185,7 +185,7 @@ def main():
             MofNCompleteColumn()
     ) as progress:
         # Create an overall progress bar
-        overall_task_id = progress.add_task(description="Extraction Progress", total=task_count)
+        overall_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)
 
         # Sequential execution for debugging or single worker
         if max_video_threads <= 1:

@@ -83,7 +83,7 @@ class TenengradFrameAnalyzer(FrameAnalyzerBase):
         best_frame = frames[best_idx]
         score = float(self._score_01(raw_scores, best_idx))
 
-        return FrameAnalyzerResult(frame=best_frame, score=score)
+        return FrameAnalyzerResult(block_index=task.block_index, frame_index=best_idx, frame=best_frame, score=score)
 
     def _to_gray(self, frame: np.ndarray) -> np.ndarray:
         if frame.ndim == 2:
