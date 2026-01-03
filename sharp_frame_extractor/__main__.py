@@ -15,6 +15,7 @@ from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn, 
 
 from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerTask, FrameAnalyzerResult
 from sharp_frame_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
+from sharp_frame_extractor.args_utils import positive_int, positive_float, default_concurrency
 from sharp_frame_extractor.worker.Future import Future
 
 analyzer_pool: FrameAnalyzerWorkerPool | None = None
@@ -59,7 +60,7 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
     elif options.total_frame_count is not None:
         stream_block_size = max(1, int(math.ceil(total_video_frames / options.total_frame_count)))
     else:
-        progress.print("Please provide either frame-interval-seconds or total-frame_count.", style="bold yellow")
+        progress.print('Please provide either "--every" or "--count".', style="bold yellow")
         progress.stop_task(task_id)
         return
 
@@ -111,54 +112,109 @@ def cpu_count_fraction(factor: float, min_value: int = 1) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser("sharp-frame-extractor", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("inputs", nargs="+", help="Video input files.")
-    parser.add_argument(
-        "--outputs",
-        nargs="*",
-        help="Output directories for each input file. "
-        "If empty, name of video file will be used as output directory. "
-        "If only one is provided, it will be used as output directory for all videos.",
+    examples = """
+Examples:
+  Extract frames by target count:
+    sharp-frame-extractor input.mp4 --count 300
+
+  Extract one sharp frame every 0.25 seconds:
+    sharp-frame-extractor input.mp4 --every 0.25
+
+  Process multiple videos, outputs next to each input:
+    sharp-frame-extractor a.mp4 b.mp4 --count 100
+
+  Write outputs into a single base folder (per input subfolder):
+    sharp-frame-extractor a.mp4 b.mp4 -o out --every 2
+"""
+
+    default_jobs, default_workers = default_concurrency()
+
+    parser = argparse.ArgumentParser(
+        prog="sharp-frame-extractor",
+        description=(
+            "Extract the sharpest frame from regular blocks of a video.\n"
+            "Choose exactly one sampling mode: --count or --every."
+        ),
+        epilog=examples,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--total-frames", type=float, default=100, help="Total frames to extract.")
+
     parser.add_argument(
-        "--frame-window", type=float, default=None, help="Frame analysis window in seconds (overwrites total-frames)."
+        "inputs",
+        nargs="+",
+        metavar="VIDEO",
+        help="One or more input video files.",
     )
-    parser.add_argument("--max-video-threads", type=int, default=None, help="Max parallel videos to process.")
-    parser.add_argument("--max-analyzers", type=int, default=None, help="Max parallel analyzers.")
+
+    parser.add_argument(
+        "-o",
+        "--output",
+        metavar="DIR",
+        help=(
+            "Base output directory.\n"
+            'If omitted, outputs are written to "<video_parent>/<video_stem>/".\n'
+            'If set, outputs are written to "<DIR>/<video_stem>/".'
+        ),
+    )
+
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument(
+        "--count",
+        type=positive_int,
+        metavar="N",
+        help="Target number of frames to extract per input video.",
+    )
+    mode.add_argument(
+        "--every",
+        type=positive_float,
+        metavar="SECONDS",
+        help="Extract one sharp frame every N seconds. Supports decimals, for example 0.25.",
+    )
+
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=positive_int,
+        default=default_jobs,
+        metavar="N",
+        help=f"Max number of videos processed in parallel. Default: {default_jobs}.",
+    )
+
+    parser.add_argument(
+        "--workers",
+        "--analyzers",
+        dest="workers",
+        type=positive_int,
+        default=default_workers,
+        metavar="N",
+        help=f"Max number of analyzer workers. Default: {default_workers}.",
+    )
+
     return parser.parse_args()
 
 
 def main():
     console = Console()
-
-    # process arguments
     args = parse_args()
-    input_paths = [Path(a) for a in args.inputs]
-    output_paths = [Path(a) for a in args.outputs] if args.outputs else []
 
-    total_frames = args.total_frames
-    frame_window = args.frame_window
+    input_paths: list[Path] = [Path(a) for a in args.inputs]
+    output_base_dir: Path | None = Path(args.output) if args.output else None
 
-    max_video_threads: int = args.max_video_threads if args.max_video_threads else cpu_count_fraction(0.4)
-    max_analyzers: int = args.max_analyzers if args.max_analyzers else cpu_count_fraction(0.4)
+    count: int | None = args.count
+    every_seconds: float | None = args.every
 
-    # create pool
-    global analyzer_pool
-    analyzer_pool = FrameAnalyzerWorkerPool(max_analyzers)
+    max_video_threads: int = int(args.jobs)
+    max_workers: int = int(args.workers)
 
-    # check output paths correctness
-    if len(input_paths) != len(output_paths):
-        if len(output_paths) == 0:
-            output_paths = [i.parent / i.stem for i in input_paths]
-        elif len(output_paths) == 1:
-            output_paths = [output_paths[0]] * len(input_paths)
-        else:
-            console.print("Please provide zero, one or as many output as inputs.", style="bold yellow")
-            exit(1)
+    if output_base_dir is not None:
+        output_paths: list[Path] = [output_base_dir / p.stem for p in input_paths]
+    else:
+        output_paths = [p.parent / p.stem for p in input_paths]
 
-    # create options
-    default_options = ExtractionOptions(frame_interval_seconds=frame_window, total_frame_count=total_frames)
+    if every_seconds is not None:
+        default_options = ExtractionOptions(frame_interval_seconds=every_seconds, total_frame_count=None)
+    else:
+        default_options = ExtractionOptions(frame_interval_seconds=None, total_frame_count=count)
 
     # create tasks
     with console.status("creating tasks..."):
@@ -172,7 +228,11 @@ def main():
     max_video_threads = min(task_count, max_video_threads)
 
     # print processing info
-    console.print(f"Running {task_count} tasks with {max_video_threads} video threads and {max_analyzers} analyzers.")
+    console.print(f"Running {task_count} tasks with {max_video_threads} jobs and {max_workers} workers.")
+
+    # create pool
+    global analyzer_pool
+    analyzer_pool = FrameAnalyzerWorkerPool(max_workers)
 
     # run processing
     start_time = time.time()
