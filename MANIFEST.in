@@ -1,0 +1,3 @@
+include LICENSE
+include README.md
+recursive-include sharp_frame_extractor *.py

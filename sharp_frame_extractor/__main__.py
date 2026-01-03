@@ -182,12 +182,11 @@ Examples:
 
     parser.add_argument(
         "--workers",
-        "--analyzers",
         dest="workers",
         type=positive_int,
         default=default_workers,
         metavar="N",
-        help=f"Max number of analyzer workers. Default: {default_workers}.",
+        help=f"Max number of frame analyzer workers. Default: {default_workers}.",
     )
 
     return parser.parse_args()
@@ -238,7 +237,8 @@ def main():
     start_time = time.time()
     analyzer_pool.start()
     with Progress(
-        TextColumn("[progress.description]{task.description}"), BarColumn(), TimeRemainingColumn(), MofNCompleteColumn()
+            TextColumn("[progress.description]{task.description}"), BarColumn(), TimeRemainingColumn(),
+            MofNCompleteColumn()
     ) as progress:
         # Create an overall progress bar
         overall_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)

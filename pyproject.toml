@@ -7,6 +7,27 @@ name = "sharp-frame-extractor"
 version = "2.0.0"
 description = "Extracts sharp frames from a video."
 readme = "README.md"
+license = { file = "LICENSE" }
+
+authors = [
+    { name = "Florian Bruggisser", email = "github@broox.ch" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Multimedia",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
 requires-python = ">=3.12"
 dependencies = [
     "ffmpegio>=0.11.1",
@@ -15,6 +36,11 @@ dependencies = [
     "rich>=14.2.0",
     "rich-argparse>=1.7.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/cansik/sharp-frame-extractor"
+Documentation = "https://github.com/cansik/sharp-frame-extractor/blob/main/README.md"
+Repository = "https://github.com/cansik/sharp-frame-extractor.git"
 
 [dependency-groups]
 dev = [
