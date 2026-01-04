@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Bruggisser"
+    given-names: "Florian"
+    orcid: "https://orcid.org/0009-0003-0645-6746"
+    affiliation: "Zurich University of the Arts"
+title: "sharp-frame-extractor"
+type: software
+version: "2.0.0"
+doi: ""
+date-released: ""
+url: "https://github.com/cansik/sharp-frame-extractor"
+repository-code: "https://github.com/cansik/sharp-frame-extractor"
+keywords:
+  - python
+  - computer vision
+  - video processing

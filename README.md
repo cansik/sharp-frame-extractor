@@ -44,9 +44,7 @@ The extractor processes the video in consecutive blocks. You choose how blocks a
 * `--every SECONDS` defines blocks by time (one block per N seconds)
 * `--count N` defines blocks by targeting a total of about N blocks across the video
 
-For each block, it evaluates frames with a sharpness score and writes only the sharpest frame of that block to disk.
-
-Sharpness scoring in version 2 is based on the Tenengrad focus measure (Sobel gradient energy), a common approach for focus and blur evaluation.
+For each block, it evaluates frames with a sharpness score and writes only the sharpest frame of that block to disk. Sharpness scoring is based on the Tenengrad focus measure (Sobel gradient energy), a common approach for focus and blur evaluation.
 
 Notes:
 
@@ -101,7 +99,7 @@ Outputs:
 There are two layers of parallelism:
 
 - `-j/--jobs` = how many videos are processed at the same time. Each job is mainly an orchestrator: it drives ffmpeg frame decoding and feeds blocks into the analysis pipeline.
-- `--workers` = how many analysis workers run in parallel. Workers are separate processes that run the NumPy and OpenCV sharpness scoring.
+- `--workers` = how many analysis workers run in parallel. Workers are separate processes that run the sharpness scoring.
 
 How the pipeline behaves:
 - A job processes a video block by block.
@@ -118,6 +116,16 @@ Example:
 sharp-frame-extractor a.mp4 b.mp4 --count 200 -j 2 --workers 6
 ```
 
+## Output
+
+The extractor writes one image per processed block:
+
+* `frame-00000.png`
+* `frame-00001.png`
+* ...
+
+The index is the block index, not the original frame number.
+
 ### Help
 
 ```bash
@@ -131,37 +139,62 @@ usage: sharp-frame-extractor [-h] [-o DIR] (--count N | --every SECONDS)
 
 Extract the sharpest frame from regular blocks of a video.
 Choose exactly one sampling mode: --count or --every.
+
+positional arguments:
+  VIDEO                 One or more input video files.
+
+options:
+  -h, --help            show this help message and exit
+  -o DIR, --output DIR  Base output directory. If omitted, outputs are written
+                        to "<video_parent>/<video_stem>/". If set, outputs are
+                        written to "<DIR>/<video_stem>/".
+  --count N             Target number of frames to extract per input video.
+  --every SECONDS       Extract one sharp frame every N seconds. Supports
+                        decimals, for example 0.25.
+  -j N, --jobs N        Max number of videos processed in parallel. Default:
+                        4.
+  --workers N           Max number of frame analyzer workers. Default: 5.
+
+Examples:
+  Extract frames by target count:
+    sharp-frame-extractor input.mp4 --count 300
+
+  Extract one sharp frame every 0.25 seconds:
+    sharp-frame-extractor input.mp4 --every 0.25
+
+  Process multiple videos, outputs next to each input:
+    sharp-frame-extractor a.mp4 b.mp4 --count 100
+
+  Write outputs into a single base folder (per input subfolder):
+    sharp-frame-extractor a.mp4 b.mp4 -o out --every 2
 ```
-
-## Output
-
-The extractor writes one image per processed block:
-
-* `frame-00000.png`
-* `frame-00001.png`
-* ...
-
-The index is the block index, not the original frame number.
 
 ## Migrating from version 1 to version 2
 
-Version 1 remains available on the `version-1` branch:
-[https://github.com/cansik/sharp-frame-extractor/tree/version-1](https://github.com/cansik/sharp-frame-extractor/tree/version-1)
+Version 1 remains available on the [version-1 branch](https://github.com/cansik/sharp-frame-extractor/tree/version-1).
 
 Changes in version 2:
 
 * New command name and argument layout
 * Updated sharpness scoring
 * Better performance via improved parallelism and worker pool design
+* License change from `MIT` to `GPLv2` due to dependency changes.
 
-### Command mapping
+```bash
+# v1
+sfextract --window 300 test.mov
 
-| v1                                    | v2                                           |
-| ------------------------------------- | -------------------------------------------- |
-| `sfextract --window 300 test.mov`     | `sharp-frame-extractor test.mov --every 0.3` |
-| `sfextract --frame-count 30 test.mov` | `sharp-frame-extractor test.mov --count 30`  |
+# v2
+sharp-frame-extractor test.mov --every 0.3
+```
 
-`--window` in v1 is milliseconds, `--every` in v2 is seconds.
+```bash
+# v1
+sfextract --frame-count 30 test.mov
+
+# v2
+sharp-frame-extractor test.mov --count 30
+```
 
 If you relied on v1 options such as method selection, cropping, preview, or debug output, keep using version 1 for now.
 

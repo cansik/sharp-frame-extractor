@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sharp-frame-extractor"
-version = "2.0.0"
+version = "2.0.0-rc.1"
 description = "Extracts sharp frames from a video."
 readme = "README.md"
 license = { file = "LICENSE" }
