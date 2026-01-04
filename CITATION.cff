@@ -8,8 +8,8 @@ authors:
 title: "sharp-frame-extractor"
 type: software
 version: "2.0.0"
-doi: ""
-date-released: ""
+doi: "10.5281/zenodo.18147797"
+date-released: "2026-01-04"
 url: "https://github.com/cansik/sharp-frame-extractor"
 repository-code: "https://github.com/cansik/sharp-frame-extractor"
 keywords:
