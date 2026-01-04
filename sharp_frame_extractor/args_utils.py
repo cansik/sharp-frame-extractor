@@ -34,10 +34,5 @@ def default_concurrency() -> tuple[int, int]:
     else:
         jobs = 4
 
-    workers = max(1, cpu - jobs - 1)
-
-    if workers < 1:
-        jobs = 1
-        workers = 1
-
+    workers = max(1, int(cpu * 0.8))
     return jobs, workers

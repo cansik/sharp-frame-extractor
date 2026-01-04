@@ -11,7 +11,7 @@ import cv2
 import ffmpegio
 import numpy as np
 from rich.console import Console
-from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn, MofNCompleteColumn
+from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn, MofNCompleteColumn, TimeElapsedColumn
 
 from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerTask, FrameAnalyzerResult
 from sharp_frame_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
@@ -47,12 +47,13 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
     video_info = video_streams[0]
 
     # extract video information
-    # video_duration_seconds = float(video_info["duration"])
+    video_duration_seconds = float(video_info["duration"])
     video_fps = float(video_info["frame_rate"])
-    total_video_frames = int(video_info["nb_frames"])
-    # video_frame_length_ms = 1000 / video_fps
-    # video_width = int(video_info["width"])
-    # video_height = int(video_info["height"])
+
+    if "nb_frames" in video_info:
+        total_video_frames = int(video_info["nb_frames"])
+    else:
+        total_video_frames = math.ceil(video_duration_seconds * video_fps)
 
     # calculate stream block size
     if options.frame_interval_seconds is not None:
@@ -237,8 +238,11 @@ def main():
     start_time = time.time()
     analyzer_pool.start()
     with Progress(
-            TextColumn("[progress.description]{task.description}"), BarColumn(), TimeRemainingColumn(),
-            MofNCompleteColumn()
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        MofNCompleteColumn(),
     ) as progress:
         # Create an overall progress bar
         overall_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)
