@@ -80,5 +80,13 @@ class Future(Generic[TResult]):
             return False
         return self._callbacks_done.wait(timeout)
 
+    def clear(self):
+        """
+        Clear the result and callbacks to allow garbage collection.
+        """
+        self._result = None
+        self._exception = None
+        self._callbacks.clear()
+
     def done(self) -> bool:
         return self._done.is_set()

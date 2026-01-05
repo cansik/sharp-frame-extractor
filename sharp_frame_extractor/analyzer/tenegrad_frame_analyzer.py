@@ -8,8 +8,8 @@ import numpy as np
 
 from sharp_frame_extractor.analyzer.frame_analyzer_base import (
     FrameAnalyzerBase,
-    FrameAnalyzerTask,
     FrameAnalyzerResult,
+    FrameAnalyzerTask,
 )
 
 
@@ -80,7 +80,7 @@ class TenengradFrameAnalyzer(FrameAnalyzerBase):
             raw_scores[i] = self._tenengrad(gray, weights)
 
         best_idx = int(np.argmax(raw_scores))
-        best_frame = frames[best_idx]
+        best_frame = frames[best_idx].copy()  # Make an independent copy to avoid memory leak
         score = float(self._score_01(raw_scores, best_idx))
 
         return FrameAnalyzerResult(block_index=task.block_index, frame_index=best_idx, frame=best_frame, score=score)

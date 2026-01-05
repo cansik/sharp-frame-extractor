@@ -1,6 +1,6 @@
 import logging
 
-from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerTask, FrameAnalyzerResult, FrameAnalyzerBase
+from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerBase, FrameAnalyzerResult, FrameAnalyzerTask
 from sharp_frame_extractor.analyzer.tenegrad_frame_analyzer import TenengradFrameAnalyzer
 from sharp_frame_extractor.worker.BaseWorker import BaseWorker
 from sharp_frame_extractor.worker.BaseWorkerPool import BaseWorkerPool

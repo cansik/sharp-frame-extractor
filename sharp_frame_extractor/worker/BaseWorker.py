@@ -1,11 +1,11 @@
 import logging
 import threading
 from abc import ABC, abstractmethod
-from multiprocessing import Process, Queue, Event, current_process
-from typing import Generic, Dict
+from multiprocessing import Event, Process, Queue, current_process
+from typing import Dict, Generic
 
 from .Future import Future
-from .types import TTask, TResult
+from .types import TResult, TTask
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,11 @@ class BaseWorker(Process, Generic[TTask, TResult], ABC):
         and resolves the corresponding Future.
         """
         while True:
-            task_id, result = self.results.get()
+            item = self.results.get()
+            if item is None:  # Sentinel value signals shutdown
+                break
+
+            task_id, result = item
             future = self._futures.pop(task_id, None)
             if future:
                 if isinstance(result, Exception):

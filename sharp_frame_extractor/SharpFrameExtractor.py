@@ -133,6 +133,7 @@ class SharpFrameExtractor:
         # wait for all tasks to be done
         for worker_task in submitted_tasks:
             worker_task.wait()
+            worker_task.clear()
 
         self.on_task_event(TaskFinishedEvent(task))
         return ExtractionResult(task.task_id)
