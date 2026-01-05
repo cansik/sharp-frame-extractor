@@ -1,7 +1,7 @@
 import logging
 from abc import ABC
 from multiprocessing import Queue
-from typing import TypeVar, Generic, Callable, List
+from typing import Callable, Generic, List, TypeVar
 
 from .BaseWorker import BaseWorker
 
@@ -56,4 +56,7 @@ class BaseWorkerPool(Generic[TWorker], ABC):
         logger.debug("Pool: Stopping all workers.")
         for worker in self.workers:
             worker.stop()
+
+        for worker in self.workers:
+            worker.join()
         logger.debug("Pool: All workers stopped.")

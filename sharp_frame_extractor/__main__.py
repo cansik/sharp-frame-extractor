@@ -24,6 +24,7 @@ from sharp_frame_extractor.models import (
     TaskFinishedEvent,
     TaskStartedEvent,
 )
+from sharp_frame_extractor.output.file_output_handler import FileOutputHandler
 from sharp_frame_extractor.SharpFrameExtractor import ExtractionTask, SharpFrameExtractor
 
 
@@ -145,9 +146,12 @@ def main():
     # print processing info
     console.print(f"Running {task_count} tasks with {max_video_threads} jobs and {max_workers} workers.")
 
+    # create output handler
+    output_handlers = [FileOutputHandler()]
+
     # run processing
     start_time = time.time()
-    with SharpFrameExtractor(max_video_threads, max_workers) as sfe:
+    with SharpFrameExtractor(output_handlers, max_video_threads, max_workers) as sfe:
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),

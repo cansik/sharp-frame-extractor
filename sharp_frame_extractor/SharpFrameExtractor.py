@@ -1,6 +1,7 @@
 import math
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Self
+from functools import partial
+from typing import Self, Sequence
 
 import cv2
 import ffmpegio
@@ -20,12 +21,17 @@ from sharp_frame_extractor.models import (
     TaskFinishedEvent,
     TaskStartedEvent,
 )
+from sharp_frame_extractor.output.frame_output_handler_base import FrameOutputHandlerBase
 from sharp_frame_extractor.worker.Future import Future
 
 
 class SharpFrameExtractor:
-    def __init__(self, max_video_jobs: int | None, max_workers: int | None):
+    def __init__(
+        self, output_handlers: Sequence[FrameOutputHandlerBase], max_video_jobs: int | None, max_workers: int | None
+    ):
         default_jobs, default_workers = default_concurrency()
+
+        self._output_handlers = output_handlers
 
         self._max_video_jobs = max_video_jobs or default_jobs
         self._max_workers = max_workers or default_workers
@@ -75,7 +81,6 @@ class SharpFrameExtractor:
         self.on_task_event(TaskStartedEvent(task))
 
         video_path = task.video_path
-        result_path = task.result_path
         options = task.options
 
         # read stream info
@@ -99,27 +104,15 @@ class SharpFrameExtractor:
         else:
             raise ValueError('Please provide either "--every" or "--count".')
 
-        # ensure output path exists
-        result_path.mkdir(parents=True, exist_ok=True)
+        # setup output handlers for this task
+        for handler in self._output_handlers:
+            handler.prepare_task(task)
 
         # setup progress bar
         total_sub_tasks = int(math.ceil(total_video_frames / stream_block_size))
         self.on_task_event(TaskAnalyzedEvent(task, total_blocks=total_sub_tasks))
 
         submitted_tasks: list[Future] = []
-
-        def on_task_finished(future: Future[FrameAnalyzerResult]):
-            result = future.result()
-
-            # todo: handle the export in a registered output handler
-            output_file_name = task.result_path / f"frame-{result.block_index:05d}.png"
-
-            if output_file_name.exists():
-                output_file_name.unlink(missing_ok=True)
-
-            cv2.imwrite(str(output_file_name.absolute()), result.frame)
-
-            self.on_block_event(BlockProcessedEvent(result.block_index, task, result))
 
         # start reading video file
         block_index = 0
@@ -132,7 +125,7 @@ class SharpFrameExtractor:
 
                 # analyze video block
                 worker_task = self._analyzer_pool.submit_task(FrameAnalyzerTask(block_index, frames_bgr))
-                worker_task.add_done_callback(on_task_finished)
+                worker_task.add_done_callback(partial(self._on_block_finished, task=task))
                 submitted_tasks.append(worker_task)
 
                 block_index += 1
@@ -143,6 +136,14 @@ class SharpFrameExtractor:
 
         self.on_task_event(TaskFinishedEvent(task))
         return ExtractionResult(task.task_id)
+
+    def _on_block_finished(self, future: Future[FrameAnalyzerResult], task: ExtractionTask):
+        result = future.result()
+
+        for h in self._output_handlers:
+            h.handle_block(task, result)
+
+        self.on_block_event(BlockProcessedEvent(result.block_index, task, result))
 
     def __enter__(self) -> Self:
         self.start()
