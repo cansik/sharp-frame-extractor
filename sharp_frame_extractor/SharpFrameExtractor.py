@@ -11,6 +11,7 @@ from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerResu
 from sharp_frame_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
 from sharp_frame_extractor.args_utils import default_concurrency
 from sharp_frame_extractor.event import Event
+from sharp_frame_extractor.memory.shared_ndarray import SharedNDArrayRef, SharedNDArrayStore
 from sharp_frame_extractor.models import (
     BlockEvent,
     BlockProcessedEvent,
@@ -37,6 +38,7 @@ class SharpFrameExtractor:
         self._max_workers = max_workers or default_workers
 
         self._analyzer_pool = FrameAnalyzerWorkerPool(self._max_workers)
+        self._shared_memory_store = SharedNDArrayStore()
 
         # callbacks
         self.on_task_event: Event[TaskEvent] = Event()
@@ -71,6 +73,9 @@ class SharpFrameExtractor:
 
         # order results by input id
         results.sort(key=lambda r: r.task_id)
+
+        # release memory
+        self._shared_memory_store.release_all()
 
         return results
 
@@ -123,9 +128,14 @@ class SharpFrameExtractor:
                 for i in range(frames.shape[0]):
                     frames_bgr[i] = cv2.cvtColor(frames[i], cv2.COLOR_RGB2BGR)
 
+                # create shared to avoid pickling
+                shared_memory_ref = self._shared_memory_store.put(frames_bgr, worker_writeable=False)
+
                 # analyze video block
-                worker_task = self._analyzer_pool.submit_task(FrameAnalyzerTask(block_index, frames_bgr))
-                worker_task.add_done_callback(partial(self._on_block_finished, task=task))
+                worker_task = self._analyzer_pool.submit_task(FrameAnalyzerTask(block_index, shared_memory_ref))
+                worker_task.add_done_callback(
+                    partial(self._on_block_finished, task=task, shared_memory_ref=shared_memory_ref)
+                )
                 submitted_tasks.append(worker_task)
 
                 block_index += 1
@@ -138,12 +148,15 @@ class SharpFrameExtractor:
         self.on_task_event(TaskFinishedEvent(task))
         return ExtractionResult(task.task_id)
 
-    def _on_block_finished(self, future: Future[FrameAnalyzerResult], task: ExtractionTask):
+    def _on_block_finished(
+        self, future: Future[FrameAnalyzerResult], task: ExtractionTask, shared_memory_ref: SharedNDArrayRef
+    ):
         result = future.result()
 
         for h in self._output_handlers:
             h.handle_block(task, result)
 
+        self._shared_memory_store.release(shared_memory_ref)
         self.on_block_event(BlockProcessedEvent(result.block_index, task, result))
 
     def __enter__(self) -> Self:

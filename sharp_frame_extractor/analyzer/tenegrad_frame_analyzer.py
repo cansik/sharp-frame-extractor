@@ -66,8 +66,7 @@ class TenengradFrameAnalyzer(FrameAnalyzerBase):
         self._cached_weight_key = None
         self._cached_weight = None
 
-    def process(self, task: FrameAnalyzerTask) -> FrameAnalyzerResult:
-        frames = task.frames
+    def process(self, task: FrameAnalyzerTask, frames: np.ndarray) -> FrameAnalyzerResult:
         if frames.ndim not in (3, 4):
             raise ValueError(f"Expected frames with shape (N,H,W) or (N,H,W,C), got {frames.shape}")
 

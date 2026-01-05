@@ -2,6 +2,7 @@ import logging
 
 from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerBase, FrameAnalyzerResult, FrameAnalyzerTask
 from sharp_frame_extractor.analyzer.tenegrad_frame_analyzer import TenengradFrameAnalyzer
+from sharp_frame_extractor.memory.shared_ndarray import SharedNDArray
 from sharp_frame_extractor.worker.BaseWorker import BaseWorker
 from sharp_frame_extractor.worker.BaseWorkerPool import BaseWorkerPool
 from sharp_frame_extractor.worker.Future import Future
@@ -19,7 +20,12 @@ class FrameAnalyzerWorker(BaseWorker[FrameAnalyzerTask, FrameAnalyzerResult]):
 
     def handle_task(self, task: FrameAnalyzerTask) -> FrameAnalyzerResult:
         self.analyzer.reset_states()
-        return self.analyzer.process(task)
+
+        with SharedNDArray.attach(task.frames_ref) as shared:
+            frames = shared.ndarray  # view into shared memory
+            result = self.analyzer.process(task, frames)
+
+        return result
 
     def cleanup(self):
         self.analyzer = None

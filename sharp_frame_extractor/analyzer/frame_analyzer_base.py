@@ -3,11 +3,13 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from sharp_frame_extractor.memory.shared_ndarray import SharedNDArrayRef
+
 
 @dataclass
 class FrameAnalyzerTask:
     block_index: int
-    frames: np.ndarray
+    frames_ref: SharedNDArrayRef
 
 
 @dataclass
@@ -24,5 +26,5 @@ class FrameAnalyzerBase(ABC):
         pass
 
     @abstractmethod
-    def process(self, task: FrameAnalyzerTask) -> FrameAnalyzerResult:
+    def process(self, task: FrameAnalyzerTask, frames: np.ndarray) -> FrameAnalyzerResult:
         pass
