@@ -67,6 +67,7 @@ class ExtractionResult:
 
 # events models
 
+
 @dataclass
 class TaskEvent(ABC):
     task: ExtractionTask
