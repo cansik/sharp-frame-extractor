@@ -1,116 +1,30 @@
 import argparse
-import math
-import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
-import cv2
-import ffmpegio
-import numpy as np
 from rich.console import Console
-from rich.progress import Progress, TextColumn, BarColumn, TimeRemainingColumn, MofNCompleteColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TaskID,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 
-from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerTask, FrameAnalyzerResult
-from sharp_frame_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
-from sharp_frame_extractor.args_utils import positive_int, positive_float, default_concurrency
-from sharp_frame_extractor.worker.Future import Future
-
-analyzer_pool: FrameAnalyzerWorkerPool | None = None
-
-
-@dataclass
-class ExtractionOptions:
-    # either one of the two have ot be set
-    frame_interval_seconds: float | None = None
-    total_frame_count: int | None = None
-
-
-@dataclass
-class ExtractionTask:
-    video_path: Path
-    result_path: Path
-    options: ExtractionOptions
-
-
-def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
-    task_id = progress.add_task(description=f"analyzing {task.video_path.name}", total=None)
-
-    video_path = task.video_path
-    result_path = task.result_path
-    options = task.options
-
-    # read stream info
-    video_streams = ffmpegio.probe.video_streams_basic(str(video_path))
-    video_info = video_streams[0]
-
-    # extract video information
-    video_duration_seconds = float(video_info["duration"])
-    video_fps = float(video_info["frame_rate"])
-
-    if "nb_frames" in video_info:
-        total_video_frames = int(video_info["nb_frames"])
-    else:
-        total_video_frames = math.ceil(video_duration_seconds * video_fps)
-
-    # calculate stream block size
-    if options.frame_interval_seconds is not None:
-        stream_block_size = max(1, int(round(options.frame_interval_seconds * video_fps)))
-    elif options.total_frame_count is not None:
-        stream_block_size = max(1, int(math.ceil(total_video_frames / options.total_frame_count)))
-    else:
-        progress.print('Please provide either "--every" or "--count".', style="bold yellow")
-        progress.stop_task(task_id)
-        return
-
-    # ensure output path exists
-    result_path.mkdir(parents=True, exist_ok=True)
-
-    # setup progress bar
-    total_sub_tasks = int(math.ceil(total_video_frames / stream_block_size))
-    progress.update(task_id, total=total_sub_tasks, description=f"processing {task.video_path.name}")
-
-    submitted_tasks: list[Future] = []
-
-    def on_task_finished(future: Future[FrameAnalyzerResult]):
-        result = future.result()
-        output_file_name = task.result_path / f"frame-{result.block_index:05d}.png"
-
-        if output_file_name.exists():
-            output_file_name.unlink(missing_ok=True)
-
-        cv2.imwrite(str(output_file_name.absolute()), result.frame)
-        result.frame = None
-        progress.update(task_id, advance=1)
-
-    # start reading video file
-    block_index = 0
-    with ffmpegio.open(str(video_path), "rv", blocksize=stream_block_size, pix_fmt="rgb24") as fin:
-        for frames in fin:
-            # convert rgb to bgr frames
-            frames_bgr = np.empty_like(frames)
-            for i in range(frames.shape[0]):
-                frames_bgr[i] = cv2.cvtColor(frames[i], cv2.COLOR_RGB2BGR)
-
-            # analyze video block
-            worker_task = analyzer_pool.submit_task(FrameAnalyzerTask(block_index, frames_bgr))
-            worker_task.add_done_callback(on_task_finished)
-            submitted_tasks.append(worker_task)
-
-            block_index += 1
-
-    # wait for all tasks to be done
-    for worker_task in submitted_tasks:
-        worker_task.result()
-
-    progress.update(task_id, completed=total_sub_tasks)
-    progress.stop_task(task_id)
-
-
-def cpu_count_fraction(factor: float, min_value: int = 1) -> int:
-    return max(min_value, int(os.cpu_count() * factor))
+from sharp_frame_extractor.args_utils import default_concurrency, positive_float, positive_int
+from sharp_frame_extractor.models import (
+    BlockEvent,
+    BlockProcessedEvent,
+    ExtractionOptions,
+    TaskAnalyzedEvent,
+    TaskEvent,
+    TaskFinishedEvent,
+    TaskStartedEvent,
+)
+from sharp_frame_extractor.SharpFrameExtractor import ExtractionTask, SharpFrameExtractor
 
 
 def parse_args() -> argparse.Namespace:
@@ -213,9 +127,9 @@ def main():
         output_paths = [p.parent / p.stem for p in input_paths]
 
     if every_seconds is not None:
-        default_options = ExtractionOptions(frame_interval_seconds=every_seconds, total_frame_count=None)
+        default_options = ExtractionOptions.from_interval(every_seconds)
     else:
-        default_options = ExtractionOptions(frame_interval_seconds=None, total_frame_count=count)
+        default_options = ExtractionOptions.from_count(count)
 
     # create tasks
     with console.status("creating tasks..."):
@@ -231,44 +145,46 @@ def main():
     # print processing info
     console.print(f"Running {task_count} tasks with {max_video_threads} jobs and {max_workers} workers.")
 
-    # create pool
-    global analyzer_pool
-    analyzer_pool = FrameAnalyzerWorkerPool(max_workers)
-
     # run processing
     start_time = time.time()
-    analyzer_pool.start()
-    with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TimeElapsedColumn(),
-        TimeRemainingColumn(),
-        MofNCompleteColumn(),
-    ) as progress:
-        # Create an overall progress bar
-        overall_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)
+    with SharpFrameExtractor(max_video_threads, max_workers) as sfe:
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+            MofNCompleteColumn(),
+        ) as progress:
+            # Create an overall progress bar
+            main_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)
 
-        # Sequential execution for debugging or single worker
-        if max_video_threads <= 1:
-            for task in tasks:
-                process_extraction_task(task, progress)
-                progress.advance(overall_task_id)
-        else:
-            # Parallel threaded execution with ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=max_video_threads) as executor:
-                futures = {}
-                for task in tasks:
-                    # Submit tasks to executor and track their futures
-                    future = executor.submit(process_extraction_task, task, progress)
-                    futures[future] = task
+            task_to_progress_lut: dict[int, TaskID] = {}
 
-                # Process tasks as workers become available
-                for future in as_completed(futures):
-                    # Wait for the future to complete
-                    future.result()
-                    progress.advance(overall_task_id)
+            # handle progress events
+            @sfe.on_task_event.register
+            def _on_task_event(event: TaskEvent):
+                if isinstance(event, TaskStartedEvent):
+                    task_to_progress_lut[event.task.task_id] = progress.add_task(
+                        description=f"analyzing {event.task.video_path.name}", total=None
+                    )
+                elif isinstance(event, TaskAnalyzedEvent):
+                    progress.update(
+                        task_to_progress_lut[event.task.task_id],
+                        total=event.total_blocks,
+                        description=f"processing {event.task.video_path.name}",
+                    )
+                elif isinstance(event, TaskFinishedEvent):
+                    progress.stop_task(task_to_progress_lut[event.task.task_id])
+                    progress.advance(main_task_id)
 
-    analyzer_pool.stop()
+            @sfe.on_block_event.register
+            def _on_block_event(event: BlockEvent):
+                if isinstance(event, BlockProcessedEvent):
+                    progress.advance(task_to_progress_lut[event.task.task_id])
+
+            # run process
+            _ = sfe.process(tasks)
+
     end_time = time.time()
     console.print(f"It took {str(timedelta(seconds=end_time - start_time))} to process {task_count} tasks.")
 
