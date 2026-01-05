@@ -82,6 +82,7 @@ def process_extraction_task(task: ExtractionTask, progress: Progress) -> None:
             output_file_name.unlink(missing_ok=True)
 
         cv2.imwrite(str(output_file_name.absolute()), result.frame)
+        result.frame = None
         progress.update(task_id, advance=1)
 
     # start reading video file
