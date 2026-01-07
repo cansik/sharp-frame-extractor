@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
-from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerResult
-from sharp_frame_extractor.models import ExtractionTask
+from sharp_frame_extractor.models import ExtractionTask, VideoFrameInfo
 
 
 class FrameOutputHandlerBase(ABC):
@@ -10,5 +9,5 @@ class FrameOutputHandlerBase(ABC):
         pass
 
     @abstractmethod
-    def handle_block(self, task: ExtractionTask, result: FrameAnalyzerResult):
+    def handle_block(self, task: ExtractionTask, frame_info: VideoFrameInfo):
         pass

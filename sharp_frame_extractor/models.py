@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
-from typing import ClassVar
-from typing import Self
+from typing import ClassVar, Self
+
+import numpy as np
 
 from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerResult
 
@@ -65,6 +65,14 @@ class ExtractionResult:
     task_id: int
 
 
+@dataclass
+class VideoFrameInfo:
+    interval_index: int
+    frame_index: int
+    score: float
+    frame: np.ndarray
+
+
 # events models
 
 
@@ -79,8 +87,15 @@ class TaskStartedEvent(TaskEvent):
 
 
 @dataclass
+class TaskPreparedEvent(TaskEvent):
+    total_blocks: int
+    total_frames: int
+
+
+@dataclass
 class TaskAnalyzedEvent(TaskEvent):
     total_blocks: int
+    total_frames: int
 
 
 @dataclass
@@ -90,10 +105,15 @@ class TaskFinishedEvent(TaskEvent):
 
 @dataclass
 class BlockEvent(ABC):
-    block_id: int
     task: ExtractionTask
 
 
 @dataclass
-class BlockProcessedEvent(BlockEvent):
+class BlockAnalyzedEvent(BlockEvent):
+    block_id: int
     result: FrameAnalyzerResult
+
+
+@dataclass
+class BlockFrameExtracted(BlockEvent):
+    frame_info: VideoFrameInfo

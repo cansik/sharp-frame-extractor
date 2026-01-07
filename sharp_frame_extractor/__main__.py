@@ -13,15 +13,18 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
+from rich_argparse import ArgumentDefaultsRichHelpFormatter
 
-from sharp_frame_extractor.args_utils import default_concurrency, positive_float, positive_int
+from sharp_frame_extractor.args_utils import default_concurrency, default_memory_limit_mb, positive_float, positive_int
 from sharp_frame_extractor.models import (
+    BlockAnalyzedEvent,
     BlockEvent,
-    BlockProcessedEvent,
+    BlockFrameExtracted,
     ExtractionOptions,
     TaskAnalyzedEvent,
     TaskEvent,
     TaskFinishedEvent,
+    TaskPreparedEvent,
     TaskStartedEvent,
 )
 from sharp_frame_extractor.output.file_output_handler import FileOutputHandler
@@ -45,6 +48,7 @@ Examples:
 """
 
     default_jobs, default_workers = default_concurrency()
+    default_memory_limit = default_memory_limit_mb()
 
     parser = argparse.ArgumentParser(
         prog="sharp-frame-extractor",
@@ -53,7 +57,7 @@ Examples:
             "Choose exactly one sampling mode: --count or --every."
         ),
         epilog=examples,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
 
     parser.add_argument(
@@ -94,16 +98,27 @@ Examples:
         type=positive_int,
         default=default_jobs,
         metavar="N",
-        help=f"Max number of videos processed in parallel. Default: {default_jobs}.",
+        help="Max number of videos processed in parallel.",
     )
 
     parser.add_argument(
+        "-w",
         "--workers",
         dest="workers",
         type=positive_int,
         default=default_workers,
         metavar="N",
-        help=f"Max number of frame analyzer workers. Default: {default_workers}.",
+        help="Max number of frame analyzer workers.",
+    )
+
+    parser.add_argument(
+        "-m",
+        "--memory-limit",
+        dest="memory_limit",
+        type=positive_int,
+        default=default_memory_limit,
+        metavar="N",
+        help="Max memory limit in MB.",
     )
 
     return parser.parse_args()
@@ -121,6 +136,7 @@ def main():
 
     max_video_threads: int = int(args.jobs)
     max_workers: int = int(args.workers)
+    max_memory_limit_mb: int = int(args.memory_limit)
 
     if output_base_dir is not None:
         output_paths: list[Path] = [output_base_dir / p.stem for p in input_paths]
@@ -144,14 +160,19 @@ def main():
     max_video_threads = min(task_count, max_video_threads)
 
     # print processing info
-    console.print(f"Running {task_count} tasks with {max_video_threads} jobs and {max_workers} workers.")
+    console.print(
+        f"Running {task_count} tasks "
+        f"with {max_video_threads} jobs, "
+        f"{max_workers} workers "
+        f"and a memory limit of ~{max_memory_limit_mb / 1024:.1f} GB."
+    )
 
     # create output handler
     output_handlers = [FileOutputHandler()]
 
     # run processing
     start_time = time.time()
-    with SharpFrameExtractor(output_handlers, max_video_threads, max_workers) as sfe:
+    with SharpFrameExtractor(output_handlers, max_video_threads, max_workers, max_memory_limit_mb) as sfe:
         with Progress(
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
@@ -160,30 +181,43 @@ def main():
             MofNCompleteColumn(),
         ) as progress:
             # Create an overall progress bar
-            main_task_id = progress.add_task(description="Sharp Frame Extractor", total=task_count)
+            main_task_id = progress.add_task(description="[bold]Sharp Frame Extractor[/bold]", total=task_count)
 
             task_to_progress_lut: dict[int, TaskID] = {}
+
+            def _get_task_name(t: ExtractionTask) -> str:
+                return f"[bold]{t.video_path.name}[/bold]"
 
             # handle progress events
             @sfe.on_task_event.register
             def _on_task_event(event: TaskEvent):
                 if isinstance(event, TaskStartedEvent):
                     task_to_progress_lut[event.task.task_id] = progress.add_task(
-                        description=f"analyzing {event.task.video_path.name}", total=None
+                        description=f"[gold1]preparing[/gold1] {_get_task_name(event.task)}", total=None
+                    )
+                elif isinstance(event, TaskPreparedEvent):
+                    progress.update(
+                        task_to_progress_lut[event.task.task_id],
+                        total=event.total_blocks + event.total_frames,
+                        description=f"[slate_blue1]analyzing[/slate_blue1] {_get_task_name(event.task)}",
                     )
                 elif isinstance(event, TaskAnalyzedEvent):
                     progress.update(
                         task_to_progress_lut[event.task.task_id],
-                        total=event.total_blocks,
-                        description=f"processing {event.task.video_path.name}",
+                        total=event.total_blocks + event.total_frames,
+                        description=f"[dodger_blue1]extracting[/dodger_blue1] {_get_task_name(event.task)}",
                     )
                 elif isinstance(event, TaskFinishedEvent):
+                    progress.update(
+                        task_to_progress_lut[event.task.task_id],
+                        description=f"[spring_green1]done[/spring_green1] {_get_task_name(event.task)}",
+                    )
                     progress.stop_task(task_to_progress_lut[event.task.task_id])
                     progress.advance(main_task_id)
 
             @sfe.on_block_event.register
             def _on_block_event(event: BlockEvent):
-                if isinstance(event, BlockProcessedEvent):
+                if isinstance(event, BlockAnalyzedEvent) or isinstance(event, BlockFrameExtracted):
                     progress.advance(task_to_progress_lut[event.task.task_id])
 
             # run process

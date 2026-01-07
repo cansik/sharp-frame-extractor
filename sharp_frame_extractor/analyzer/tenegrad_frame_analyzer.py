@@ -78,13 +78,10 @@ class TenengradFrameAnalyzer(FrameAnalyzerBase):
             gray = self._to_gray(frames[i])
             raw_scores[i] = self._tenengrad(gray, weights)
 
-        best_idx = int(np.argmax(raw_scores))
-        best_frame = frames[best_idx].copy()  # Make an independent copy to avoid memory leak
-        score = float(self._score_01(raw_scores, best_idx))
+        return FrameAnalyzerResult(block_index=task.block_index, scores=raw_scores.tolist())
 
-        return FrameAnalyzerResult(block_index=task.block_index, frame_index=best_idx, frame=best_frame, score=score)
-
-    def _to_gray(self, frame: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _to_gray(frame: np.ndarray) -> np.ndarray:
         if frame.ndim == 2:
             return frame
 
@@ -146,18 +143,3 @@ class TenengradFrameAnalyzer(FrameAnalyzerBase):
             return np.float32(g2.mean())
 
         return np.float32((g2 * weights).sum())
-
-    def _score_01(self, raw_scores: np.ndarray, best_idx: int) -> float:
-        eps = float(self._cfg.eps)
-        best = float(raw_scores[best_idx])
-
-        if self._cfg.normalize is ScoreNormalization.MINMAX:
-            mn = float(raw_scores.min())
-            mx = float(raw_scores.max())
-            return float(np.clip((best - mn) / (mx - mn + eps), 0.0, 1.0))
-
-        med = float(np.median(raw_scores))
-        mad = float(np.median(np.abs(raw_scores - med)))
-        scale = 1.4826 * mad + eps
-        z = (best - med) / scale
-        return float(1.0 / (1.0 + np.exp(-z)))
