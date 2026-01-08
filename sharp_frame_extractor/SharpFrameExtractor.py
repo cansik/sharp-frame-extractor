@@ -141,7 +141,10 @@ class SharpFrameExtractor:
         possible_block_size = self._calculate_block_size(
             video_width, video_height, self._extraction_channels, self.memory_limit_per_job_mb
         )
-        stream_block_size = min(self._preferred_block_size, possible_block_size)
+
+        # Distribute memory among the worker buffers
+        max_block_size_per_worker = max(1, possible_block_size // self._max_workers)
+        stream_block_size = min(self._preferred_block_size, max_block_size_per_worker)
 
         # setup progress bar for analysis
         total_sub_tasks = int(math.ceil(total_video_frames / stream_block_size))
