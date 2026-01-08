@@ -29,6 +29,7 @@ from sharp_frame_extractor.models import (
 )
 from sharp_frame_extractor.output.file_output_handler import FileOutputHandler
 from sharp_frame_extractor.SharpFrameExtractor import ExtractionTask, SharpFrameExtractor
+from sharp_frame_extractor.ui.progress_bar import StatefulBarColumn
 
 
 def parse_args() -> argparse.Namespace:
@@ -175,43 +176,52 @@ def main():
     with SharpFrameExtractor(output_handlers, max_video_threads, max_workers, max_memory_limit_mb) as sfe:
         with Progress(
             TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
+            StatefulBarColumn(),
             TimeElapsedColumn(),
             TimeRemainingColumn(),
             MofNCompleteColumn(),
         ) as progress:
             # Create an overall progress bar
-            main_task_id = progress.add_task(description="[bold]Sharp Frame Extractor[/bold]", total=task_count)
+            main_task_id = progress.add_task(
+                description="[bold]Sharp Frame Extractor[/bold]",
+                total=task_count,
+                bar_complete_style="bright_white",
+                bar_finished_style="bright_white",
+                bar_pulse_style="bright_white",
+            )
 
             task_to_progress_lut: dict[int, TaskID] = {}
 
-            def _get_task_name(t: ExtractionTask) -> str:
-                return f"[bold]{t.video_path.name}[/bold]"
+            def _set_state(t: ExtractionTask, label: str, color: str) -> None:
+                progress_task_id = task_to_progress_lut[t.task_id]
+                progress.update(
+                    progress_task_id,
+                    description=f"[{color}]{label}[/{color}] [bold]{t.video_path.name}[/bold]",
+                    bar_complete_style=color,
+                    bar_finished_style=color,
+                    bar_pulse_style=color,
+                )
 
             # handle progress events
             @sfe.on_task_event.register
             def _on_task_event(event: TaskEvent):
                 if isinstance(event, TaskStartedEvent):
                     task_to_progress_lut[event.task.task_id] = progress.add_task(
-                        description=f"[gold1]preparing[/gold1] {_get_task_name(event.task)}", total=None
+                        description=f"{event.task.task_id}", total=None
                     )
+                    _set_state(event.task, "preparing", "gold1")
                 elif isinstance(event, TaskPreparedEvent):
                     progress.update(
-                        task_to_progress_lut[event.task.task_id],
-                        total=event.total_blocks + event.total_frames,
-                        description=f"[slate_blue1]analyzing[/slate_blue1] {_get_task_name(event.task)}",
+                        task_to_progress_lut[event.task.task_id], total=event.total_blocks + event.total_frames
                     )
+                    _set_state(event.task, "analyzing", "slate_blue1")
                 elif isinstance(event, TaskAnalyzedEvent):
                     progress.update(
-                        task_to_progress_lut[event.task.task_id],
-                        total=event.total_blocks + event.total_frames,
-                        description=f"[dodger_blue1]extracting[/dodger_blue1] {_get_task_name(event.task)}",
+                        task_to_progress_lut[event.task.task_id], total=event.total_blocks + event.total_frames
                     )
+                    _set_state(event.task, "extracting", "dodger_blue1")
                 elif isinstance(event, TaskFinishedEvent):
-                    progress.update(
-                        task_to_progress_lut[event.task.task_id],
-                        description=f"[spring_green1]done[/spring_green1] {_get_task_name(event.task)}",
-                    )
+                    _set_state(event.task, "done", "spring_green1")
                     progress.stop_task(task_to_progress_lut[event.task.task_id])
                     progress.advance(main_task_id)
 
