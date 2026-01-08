@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sharp-frame-extractor"
-version = "2.0.0-rc.1"
+version = "2.0.0-rc.2"
 description = "Extracts sharp frames from a video."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -33,6 +33,7 @@ dependencies = [
     "ffmpegio>=0.11.1",
     "numpy>=2.4.0",
     "opencv-python>=4.11.0.86",
+    "psutil>=7.2.1",
     "rich>=14.2.0",
     "rich-argparse>=1.7.2",
 ]

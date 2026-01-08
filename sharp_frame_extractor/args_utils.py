@@ -1,6 +1,10 @@
 import argparse
 import os
 
+import psutil
+
+MIN_MEMORY_LIMIT = 4096
+
 
 def positive_int(value: str) -> int:
     try:
@@ -36,3 +40,21 @@ def default_concurrency() -> tuple[int, int]:
 
     workers = max(1, int(cpu * 0.8))
     return jobs, workers
+
+
+def default_memory_limit_mb(safe_factor: float = 0.8) -> int:
+    memory_info = psutil.virtual_memory()
+
+    total_bytes = 0
+
+    try:
+        total_bytes = memory_info.total
+    except AttributeError:
+        pass
+
+    # Fallback to 4GB if detection failed or 0
+    if total_bytes <= 0:
+        return MIN_MEMORY_LIMIT
+
+    # Return n% of total memory in MB
+    return int((total_bytes * 0.8) / (1024 * 1024))
