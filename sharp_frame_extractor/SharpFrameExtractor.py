@@ -66,6 +66,9 @@ class SharpFrameExtractor:
     def start(self):
         self._analyzer_pool.start()
 
+        for handler in self._output_handlers:
+            handler.open()
+
     def process(self, tasks: list[ExtractionTask]) -> list[ExtractionResult]:
         results: list[ExtractionResult] = []
 
@@ -97,6 +100,9 @@ class SharpFrameExtractor:
 
     def stop(self):
         self._analyzer_pool.stop()
+
+        for handler in self._output_handlers:
+            handler.close()
 
     def _process_extraction_task(self, task: ExtractionTask) -> ExtractionResult:
         self.on_task_event(TaskStartedEvent(task))
