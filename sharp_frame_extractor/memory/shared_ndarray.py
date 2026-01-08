@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from multiprocessing import shared_memory
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Self, Tuple
 
 import numpy as np
 
@@ -78,7 +79,36 @@ class SharedNDArray:
         self.close()
 
 
-class SharedNDArrayStore:
+class SharedNDArrayStoreBase(ABC):
+    def open(self) -> None:
+        """Optional setup method."""
+        pass
+
+    def close(self) -> None:
+        """Closes the store and releases all resources."""
+        self.release_all()
+
+    def __enter__(self) -> Self:
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    @abstractmethod
+    def put(self, arr: np.ndarray, *, order: str = "C", worker_writeable: bool = False) -> SharedNDArrayRef:
+        pass
+
+    @abstractmethod
+    def release(self, ref: SharedNDArrayRef) -> None:
+        pass
+
+    @abstractmethod
+    def release_all(self) -> None:
+        pass
+
+
+class SharedNDArrayStore(SharedNDArrayStoreBase):
     """
     Owns shared memory blocks in the producer process.
     Call release(ref) when you are done to avoid leaked segments.

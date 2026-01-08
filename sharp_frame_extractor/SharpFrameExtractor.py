@@ -11,7 +11,8 @@ from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerResu
 from sharp_frame_extractor.analyzer.frame_analyzer_pool import FrameAnalyzerWorkerPool
 from sharp_frame_extractor.args_utils import MIN_MEMORY_LIMIT, default_concurrency, default_memory_limit_mb
 from sharp_frame_extractor.event import Event
-from sharp_frame_extractor.memory.shared_ndarray import SharedNDArrayRef, SharedNDArrayStore
+from sharp_frame_extractor.memory.shared_ndarray import SharedNDArrayRef, SharedNDArrayStoreBase
+from sharp_frame_extractor.memory.shared_ndarray_pool import PooledSharedNDArrayStore
 from sharp_frame_extractor.models import (
     BlockAnalyzedEvent,
     BlockEvent,
@@ -50,7 +51,6 @@ class SharpFrameExtractor:
         )
 
         self._analyzer_pool = FrameAnalyzerWorkerPool(self._max_workers)
-        self._shared_memory_store = SharedNDArrayStore()
 
         # callbacks
         self.on_task_event: Event[TaskEvent] = Event()
@@ -59,6 +59,7 @@ class SharpFrameExtractor:
         # internal defaults
         self._preferred_block_size = 32
         self._analysis_pixel_format = "gray"
+        self._analysis_channels = 1
         self._extraction_pixel_format = "rgb24"
         self._extraction_channels = 3
 
@@ -91,9 +92,6 @@ class SharpFrameExtractor:
 
         # order results by input id
         results.sort(key=lambda r: r.task_id)
-
-        # release memory
-        self._shared_memory_store.release_all()
 
         return results
 
@@ -143,9 +141,14 @@ class SharpFrameExtractor:
         total_sub_tasks = int(math.ceil(total_video_frames / stream_block_size))
         self.on_task_event(TaskPreparedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
 
-        # analyze video first
-        interval_ids, frame_ids, scores = self._analyze_frames(task, stream_block_size, frame_interval)
-        self.on_task_event(TaskAnalyzedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
+        # prepare shared memory store
+        buffer_size = video_width * video_height * self._analysis_channels * stream_block_size
+
+        # limit buffers to max workers to prevent over-allocation
+        with PooledSharedNDArrayStore(item_size=buffer_size, n_buffers=self._max_workers) as store:
+            # analyze video first
+            interval_ids, frame_ids, scores = self._analyze_frames(task, stream_block_size, frame_interval, store)
+            self.on_task_event(TaskAnalyzedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
 
         # extraction run
         self._extract_frames(task, stream_block_size, interval_ids, frame_ids, scores)
@@ -154,7 +157,7 @@ class SharpFrameExtractor:
         return ExtractionResult(task.task_id)
 
     def _analyze_frames(
-        self, task: ExtractionTask, stream_block_size: int, frame_interval: int
+        self, task: ExtractionTask, stream_block_size: int, frame_interval: int, store: SharedNDArrayStoreBase
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         submitted_tasks: list[Future] = []
         analysis_results: list[FrameAnalyzerResult] = []
@@ -166,7 +169,7 @@ class SharpFrameExtractor:
         ) as fin:
             for frames in fin:
                 # create shared memory
-                shared_memory_ref = self._shared_memory_store.put(frames, worker_writeable=False)
+                shared_memory_ref = store.put(frames, worker_writeable=False)
 
                 # analyze video block
                 worker_task = self._analyzer_pool.submit_task(FrameAnalyzerTask(block_index, shared_memory_ref))
@@ -176,6 +179,7 @@ class SharpFrameExtractor:
                         results=analysis_results,
                         task=task,
                         shared_memory_ref=shared_memory_ref,
+                        store=store,
                     )
                 )
                 submitted_tasks.append(worker_task)
@@ -200,6 +204,7 @@ class SharpFrameExtractor:
         results: list[FrameAnalyzerResult],
         task: ExtractionTask,
         shared_memory_ref: SharedNDArrayRef,
+        store: SharedNDArrayStoreBase,
     ):
         # append result to results list
         result = future.result()
@@ -208,7 +213,7 @@ class SharpFrameExtractor:
         results.append(result)
 
         # release memory
-        self._shared_memory_store.release(shared_memory_ref)
+        store.release(shared_memory_ref)
         self.on_block_event(BlockAnalyzedEvent(task, result.block_index, result))
 
     def _extract_frames(
