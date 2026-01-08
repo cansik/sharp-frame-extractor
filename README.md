@@ -1,11 +1,11 @@
-# Sharp Frame Extractor
+# Sharp Frame Extractor [![PyPI](https://img.shields.io/pypi/v/sharp-frame-extractor)](https://pypi.org/project/sharp-frame-extractor/)
 
 Sharp Frame Extractor is a command line utility for sampling videos into still images using sharpness scoring. It processes the input in short time windows and writes the highest scoring frame from each window to disk, which is useful for photogrammetry, volumetric capture, and similar pipelines.
 
 Version 2 focuses on:
 - A simpler command line interface
 - Better sharpness scoring
-- Faster, smoother processing via improved parallelism
+- Two-pass architecture for memory-efficient analysis and faster processing
 
 ## Example
 
@@ -96,19 +96,26 @@ Outputs:
 
 ### Performance tuning
 
-There are two layers of parallelism:
+By default, the extractor automatically chooses performance settings based on the workload and the available hardware. The options below let you override those defaults when you want more direct control.
 
-- `-j/--jobs` = how many videos are processed at the same time. Each job is mainly an orchestrator: it drives ffmpeg frame decoding and feeds blocks into the analysis pipeline.
-- `--workers` = how many analysis workers run in parallel. Workers are separate processes that run the sharpness scoring.
+There are three main tuning knobs, with two layers of parallelism:
+
+* `-j/--jobs` (`max_video_jobs`) = how many videos are processed at the same time. Each job mainly acts as an orchestrator: it drives frame decoding and hands blocks to the analysis stage.
+* `-w/--workers` (`max_workers`) = how many analysis workers run in parallel. Workers are separate processes that perform the CPU intensive sharpness scoring and are shared across all jobs.
+* `-m/--memory-limit` (`memory_limit_mb`) = the total memory budget for frame buffers. This limit is split across active jobs, so increasing `--jobs` reduces the buffer size available per video.
 
 How the pipeline behaves:
-- A job processes a video block by block.
-- Each block needs an available worker to be analyzed.
-- If no worker is available, the job waits and does not keep decoding more blocks.
+
+* A job processes a video block by block.
+* Each block needs an available worker to be analyzed.
+* If no worker is available, the job waits and does not keep decoding more blocks.
+* Frame buffering is bounded by the global memory limit, preventing unbounded memory growth when many jobs are active.
 
 Practical guidance:
-- Processing a single video: keep `--jobs 1` and tune `--workers` (this usually controls total throughput).
-- Processing many videos: pick a sensible `--workers` value first (often around your CPU core count), then increase `--jobs` until the workers stay busy. If CPU is already pegged, raising `--jobs` will mostly add overhead without speeding things up.
+
+* Processing a single video: keep `--jobs 1` and tune `--workers`. This usually controls total throughput.
+* Processing many videos: pick a sensible `--workers` value first, often close to your CPU core count, then increase `--jobs` until the workers stay busy. If the CPU is already fully utilized, increasing `--jobs` will mostly add overhead without speeding things up.
+* If you run many jobs at once and see increased waiting or reduced throughput, consider raising the memory limit so each job has enough buffering.
 
 Example:
 
@@ -133,28 +140,28 @@ sharp-frame-extractor --help
 ```
 
 ```text
-usage: sharp-frame-extractor [-h] [-o DIR] (--count N | --every SECONDS)
-                             [-j N] [--workers N]
+Usage: sharp-frame-extractor [-h] [-o DIR] (--count N | --every SECONDS) [-j N] [-w N]
+                             [-m MEMORY_MB]
                              VIDEO [VIDEO ...]
 
-Extract the sharpest frame from regular blocks of a video.
-Choose exactly one sampling mode: --count or --every.
+Extract sharp frames from a video by scoring frames within blocks. Choose exactly one
+sampling mode: --count or --every.
 
-positional arguments:
+Positional Arguments:
   VIDEO                 One or more input video files.
 
-options:
+Options:
   -h, --help            show this help message and exit
-  -o DIR, --output DIR  Base output directory. If omitted, outputs are written
-                        to "<video_parent>/<video_stem>/". If set, outputs are
-                        written to "<DIR>/<video_stem>/".
-  --count N             Target number of frames to extract per input video.
-  --every SECONDS       Extract one sharp frame every N seconds. Supports
-                        decimals, for example 0.25.
-  -j N, --jobs N        Max number of videos processed in parallel. Default:
-                        4.
-  --workers N           Max number of frame analyzer workers. Default: 5.
-
+  -o, --output DIR      Base output directory. If omitted, outputs are written to
+                        "<video_parent>/<video_stem>/". If set, outputs are written to
+                        "<DIR>/<video_stem>/". (default: None)
+  --count N             Target number of frames to extract per input video. (default: None)
+  --every SECONDS       Extract one sharp frame every N seconds. Supports decimals, for example 0.25. (default: None)
+  -j, --jobs N          Max number of videos processed in parallel (video jobs). (default: 4)
+  -w, --workers N       Total analysis worker processes shared across all video jobs. (default: 8)
+  -m, --memory-limit MEMORY_MB
+                        Global memory limit for frame buffers in MB (shared across jobs). (default: 52428)
+                        
 Examples:
   Extract frames by target count:
     sharp-frame-extractor input.mp4 --count 300

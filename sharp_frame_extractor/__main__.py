@@ -1,6 +1,7 @@
 import argparse
 import time
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 
 from rich.console import Console
@@ -32,32 +33,16 @@ from sharp_frame_extractor.ui.progress_bar import StatefulBarColumn
 
 
 def parse_args() -> argparse.Namespace:
-    examples = """
-Examples:
-  Extract frames by target count:
-    sharp-frame-extractor input.mp4 --count 300
-
-  Extract one sharp frame every 0.25 seconds:
-    sharp-frame-extractor input.mp4 --every 0.25
-
-  Process multiple videos, outputs next to each input:
-    sharp-frame-extractor a.mp4 b.mp4 --count 100
-
-  Write outputs into a single base folder (per input subfolder):
-    sharp-frame-extractor a.mp4 b.mp4 -o out --every 2
-"""
-
     default_jobs, default_workers = default_concurrency()
     default_memory_limit = default_memory_limit_mb()
 
     parser = argparse.ArgumentParser(
         prog="sharp-frame-extractor",
         description=(
-            "Extract the sharpest frame from regular blocks of a video.\n"
+            "Extract sharp frames from a video by scoring frames within blocks.\n"
             "Choose exactly one sampling mode: --count or --every."
         ),
-        epilog=examples,
-        formatter_class=ArgumentDefaultsRichHelpFormatter,
+        formatter_class=partial(ArgumentDefaultsRichHelpFormatter, width=90),
     )
 
     parser.add_argument(
@@ -98,7 +83,7 @@ Examples:
         type=positive_int,
         default=default_jobs,
         metavar="N",
-        help="Max number of videos processed in parallel.",
+        help="Max number of videos processed in parallel (video jobs).",
     )
 
     parser.add_argument(
@@ -108,7 +93,7 @@ Examples:
         type=positive_int,
         default=default_workers,
         metavar="N",
-        help="Max number of frame analyzer workers.",
+        help="Total analysis worker processes shared across all video jobs.",
     )
 
     parser.add_argument(
@@ -117,8 +102,8 @@ Examples:
         dest="memory_limit",
         type=positive_int,
         default=default_memory_limit,
-        metavar="N",
-        help="Max memory limit in MB.",
+        metavar="MEMORY_MB",
+        help="Global memory limit for frame buffers in MB (shared across jobs).",
     )
 
     return parser.parse_args()
