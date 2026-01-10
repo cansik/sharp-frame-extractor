@@ -4,7 +4,6 @@ from functools import partial
 from itertools import chain
 from typing import Self, Sequence
 
-import ffmpegio
 import numpy as np
 
 from sharp_frame_extractor.analyzer.frame_analyzer_base import FrameAnalyzerResult, FrameAnalyzerTask
@@ -27,6 +26,7 @@ from sharp_frame_extractor.models import (
     VideoFrameInfo,
 )
 from sharp_frame_extractor.output.frame_output_handler_base import FrameOutputHandlerBase
+from sharp_frame_extractor.video_reader import FfmpegIoVideoReader, PixelFormat, VideoReader, VideoReaderFactory
 from sharp_frame_extractor.worker.Future import Future
 
 
@@ -37,6 +37,7 @@ class SharpFrameExtractor:
         max_video_jobs: int | None = None,
         max_workers: int | None = None,
         memory_limit_mb: int | None = None,
+        video_reader_factory: VideoReaderFactory | None = None,
     ):
         default_jobs, default_workers = default_concurrency()
         default_memory_limit = default_memory_limit_mb()
@@ -49,6 +50,7 @@ class SharpFrameExtractor:
         self.memory_limit_per_job_mb = max(
             MIN_MEMORY_LIMIT, math.ceil(self._total_memory_limit_mb / self._max_video_jobs)
         )
+        self._video_reader_factory: VideoReaderFactory = video_reader_factory or FfmpegIoVideoReader
 
         self._analyzer_pool = FrameAnalyzerWorkerPool(self._max_workers)
 
@@ -57,11 +59,8 @@ class SharpFrameExtractor:
         self.on_block_event: Event[BlockEvent] = Event()
 
         # internal defaults
-        self._preferred_block_size = 32
-        self._analysis_pixel_format = "gray"
-        self._analysis_channels = 1
-        self._extraction_pixel_format = "rgb24"
-        self._extraction_channels = 3
+        self._analysis_pixel_format = PixelFormat.GRAY
+        self._extraction_pixel_format = PixelFormat.RGB24
 
     def start(self):
         self._analyzer_pool.start()
@@ -110,90 +109,83 @@ class SharpFrameExtractor:
         video_path = task.video_path
         options = task.options
 
-        # read stream info
-        video_streams = ffmpegio.probe.video_streams_basic(str(video_path))
-        video_info = video_streams[0]
+        # create video reader
+        video_reader = self._video_reader_factory(video_path)
 
-        # extract video information
-        video_duration_seconds = float(video_info["duration"])
-        video_fps = float(video_info["frame_rate"])
-
-        video_width = int(video_info["width"])
-        video_height = int(video_info["height"])
-
-        if "nb_frames" in video_info:
-            total_video_frames = int(video_info["nb_frames"])
-        else:
-            total_video_frames = math.ceil(video_duration_seconds * video_fps)
+        # read video info
+        video_info = video_reader.probe()
 
         # calculate frame interval for selecting the amount of output frames
         if options.frame_interval_seconds is not None:
-            frame_interval = max(1, int(round(options.frame_interval_seconds * video_fps)))
+            frame_interval = max(1, int(round(options.frame_interval_seconds * video_info.fps)))
         elif options.total_frame_count is not None:
-            frame_interval = max(1, int(math.ceil(total_video_frames / options.total_frame_count)))
+            frame_interval = max(1, int(math.ceil(video_info.total_frames / options.total_frame_count)))
         else:
             raise ValueError('Please provide either "--every" or "--count".')
 
         # total frames to extract
-        total_frames = int(math.ceil(total_video_frames / frame_interval))
+        total_frames = int(math.ceil(video_info.total_frames / frame_interval))
 
-        # calculate stream block size
+        # calculate possible stream block size
         possible_block_size = self._calculate_block_size(
-            video_width, video_height, self._extraction_channels, self.memory_limit_per_job_mb
+            video_info.width, video_info.height, self._extraction_pixel_format.channels, self.memory_limit_per_job_mb
         )
 
         # Distribute memory among the worker buffers
-        max_block_size_per_worker = max(1, possible_block_size // self._max_workers)
-        stream_block_size = min(self._preferred_block_size, max_block_size_per_worker)
+        stream_block_size = max(1, possible_block_size // self._max_workers)
 
         # setup progress bar for analysis
-        total_sub_tasks = int(math.ceil(total_video_frames / stream_block_size))
+        total_sub_tasks = int(math.ceil(video_info.total_frames / stream_block_size))
         self.on_task_event(TaskPreparedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
 
         # prepare shared memory store
-        buffer_size = video_width * video_height * self._analysis_channels * stream_block_size
+        buffer_size = video_info.width * video_info.height * self._analysis_pixel_format.channels * stream_block_size
 
         # limit buffers to max workers to prevent over-allocation
         with PooledSharedNDArrayStore(item_size=buffer_size, n_buffers=self._max_workers) as store:
             # analyze video first
-            interval_ids, frame_ids, scores = self._analyze_frames(task, stream_block_size, frame_interval, store)
+            interval_ids, frame_ids, scores = self._analyze_frames(
+                video_reader, task, stream_block_size, frame_interval, store
+            )
             self.on_task_event(TaskAnalyzedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
 
         # extraction run
-        self._extract_frames(task, stream_block_size, interval_ids, frame_ids, scores)
+        self._extract_frames(video_reader, task, stream_block_size, interval_ids, frame_ids, scores)
 
         self.on_task_event(TaskFinishedEvent(task))
         return ExtractionResult(task.task_id)
 
     def _analyze_frames(
-        self, task: ExtractionTask, stream_block_size: int, frame_interval: int, store: SharedNDArrayStoreBase
+        self,
+        video_reader: VideoReader,
+        task: ExtractionTask,
+        stream_block_size: int,
+        frame_interval: int,
+        store: SharedNDArrayStoreBase,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         submitted_tasks: list[Future] = []
         analysis_results: list[FrameAnalyzerResult] = []
 
         # analysis run
         block_index = 0
-        with ffmpegio.open(
-            str(task.video_path), "rv", blocksize=stream_block_size, pix_fmt=self._analysis_pixel_format
-        ) as fin:
-            for frames in fin:
-                # create shared memory
-                shared_memory_ref = store.put(frames, worker_writeable=False)
+        for frames in video_reader.read_frames(stream_block_size, self._analysis_pixel_format):
+            # create shared memory
+            shared_memory_ref = store.put(frames, worker_writeable=False)
 
-                # analyze video block
-                worker_task = self._analyzer_pool.submit_task(FrameAnalyzerTask(block_index, shared_memory_ref))
-                worker_task.add_done_callback(
-                    partial(
-                        self._on_block_finished,
-                        results=analysis_results,
-                        task=task,
-                        shared_memory_ref=shared_memory_ref,
-                        store=store,
-                    )
+            # analyze video block
+            worker_task = self._analyzer_pool.submit_task(FrameAnalyzerTask(block_index, shared_memory_ref))
+            worker_task.add_done_callback(
+                partial(
+                    self._on_block_finished,
+                    results=analysis_results,
+                    task=task,
+                    shared_memory_ref=shared_memory_ref,
+                    store=store,
                 )
-                submitted_tasks.append(worker_task)
+            )
+            submitted_tasks.append(worker_task)
 
-                block_index += 1
+            block_index += 1
 
         # wait for all tasks to be done
         for worker_task in submitted_tasks:
@@ -227,6 +219,7 @@ class SharpFrameExtractor:
 
     def _extract_frames(
         self,
+        video_reader: VideoReader,
         task: ExtractionTask,
         stream_block_size: int,
         interval_ids: np.ndarray,
@@ -239,47 +232,39 @@ class SharpFrameExtractor:
 
         global_start = 0  # first global frame index in current chunk
 
-        with ffmpegio.open(
-            str(task.video_path),
-            "rv",
-            blocksize=stream_block_size,
-            pix_fmt=self._extraction_pixel_format,
-        ) as fin:
-            for block_index, frames in enumerate(fin):
-                block_len = len(frames)
-                if block_len == 0:
-                    continue
+        for frames in video_reader.read_frames(stream_block_size, self._extraction_pixel_format):
+            block_len = len(frames)
+            if block_len == 0:
+                continue
 
-                block_end = global_start + block_len  # exclusive
+            block_end = global_start + block_len  # exclusive
 
-                i0 = np.searchsorted(frame_ids, global_start, side="left")
-                i1 = np.searchsorted(frame_ids, block_end, side="left")
+            i0 = np.searchsorted(frame_ids, global_start, side="left")
+            i1 = np.searchsorted(frame_ids, block_end, side="left")
 
-                if i0 == i1:
-                    global_start = block_end
-                    continue
-
-                local_idxs = frame_ids[i0:i1] - global_start
-
-                for k, local_idx in zip(range(i0, i1), local_idxs):
-                    frame_id = int(frame_ids[k])
-                    interval_id = int(interval_ids[k])
-                    score = float(scores[k])
-
-                    frame = frames[int(local_idx)]
-
-                    frame_info = VideoFrameInfo(
-                        interval_index=interval_id, frame_index=frame_id, score=score, frame=frame
-                    )
-                    for handler in self._output_handlers:
-                        handler.handle_block(task, frame_info)
-
-                    self.on_block_event(BlockFrameExtracted(task=task, frame_info=frame_info))
-
+            if i0 == i1:
                 global_start = block_end
+                continue
 
-                if i1 >= frame_ids.size:
-                    break
+            local_idxs = frame_ids[i0:i1] - global_start
+
+            for k, local_idx in zip(range(i0, i1), local_idxs):
+                frame_id = int(frame_ids[k])
+                interval_id = int(interval_ids[k])
+                score = float(scores[k])
+
+                frame = frames[int(local_idx)]
+
+                frame_info = VideoFrameInfo(interval_index=interval_id, frame_index=frame_id, score=score, frame=frame)
+                for handler in self._output_handlers:
+                    handler.handle_block(task, frame_info)
+
+                self.on_block_event(BlockFrameExtracted(task=task, frame_info=frame_info))
+
+            global_start = block_end
+
+            if i1 >= frame_ids.size:
+                break
 
     @staticmethod
     def _calculate_block_size(
