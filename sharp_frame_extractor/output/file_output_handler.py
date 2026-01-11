@@ -10,9 +10,12 @@ from sharp_frame_extractor.output.frame_output_handler_base import FrameOutputHa
 
 
 class FileOutputHandler(FrameOutputHandlerBase):
-    def __init__(self, max_workers: int = 4, max_queue_size: int = 32):
+    def __init__(self, max_workers: int = 4, max_queue_size: int = 32, output_format: str = "png"):
         self._max_workers = max_workers
         self._writer_pool: ThreadPoolExecutor | None = None
+
+        self._output_format = output_format
+        self._output_extension = f".{self._output_format}"
 
         # Semaphore to prevent unbounded memory usage if writing is slower than extraction
         self._queue_semaphore = threading.Semaphore(max_queue_size)
@@ -25,7 +28,7 @@ class FileOutputHandler(FrameOutputHandlerBase):
         task.result_path.mkdir(parents=True, exist_ok=True)
 
     def handle_block(self, task: ExtractionTask, frame_info: VideoFrameInfo):
-        output_file_name = task.result_path / f"frame-{frame_info.interval_index:05d}.png"
+        output_file_name = task.result_path / f"frame-{frame_info.interval_index:05d}{self._output_extension}"
 
         if output_file_name.exists():
             output_file_name.unlink(missing_ok=True)
@@ -47,9 +50,13 @@ class FileOutputHandler(FrameOutputHandlerBase):
         except Exception as e:
             print(f"Error writing frame: {e}")
 
-    @staticmethod
-    def _write_output(output_file_name: Path, frame: np.ndarray):
-        cv2.imwrite(str(output_file_name.absolute()), frame)
+    def _write_output(self, output_file_name: Path, frame: np.ndarray):
+        # using imencode prevents issues with non-ascii paths on windows
+        ok, buf = cv2.imencode(self._output_extension, frame)
+        if not ok:
+            raise RuntimeError("cv2.imencode failed")
+
+        output_file_name.write_bytes(buf.tobytes())
 
     def close(self):
         self._writer_pool.shutdown(wait=True)
