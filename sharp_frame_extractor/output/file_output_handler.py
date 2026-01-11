@@ -49,9 +49,7 @@ class FileOutputHandler(FrameOutputHandlerBase):
 
     @staticmethod
     def _write_output(output_file_name: Path, frame: np.ndarray):
-        # convert frame to bgr
-        bgr_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(str(output_file_name.absolute()), bgr_frame)
+        cv2.imwrite(str(output_file_name.absolute()), frame)
 
     def close(self):
         self._writer_pool.shutdown(wait=True)

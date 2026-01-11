@@ -38,7 +38,7 @@ class AvVideoReader(VideoReader):
         # Seek to start
         self._container.seek(0)
 
-        av_format = "gray" if pixel_format == PixelFormat.GRAY else "rgb24"
+        av_format = pixel_format.value
 
         for frame in self._container.decode(self._stream):
             # Convert to numpy array

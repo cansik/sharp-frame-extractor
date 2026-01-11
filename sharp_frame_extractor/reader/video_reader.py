@@ -10,12 +10,15 @@ import numpy as np
 class PixelFormat(Enum):
     GRAY = "gray"
     RGB24 = "rgb24"
+    BGR24 = "bgr24"
 
     @property
     def channels(self) -> int:
         if self == PixelFormat.GRAY:
             return 1
         if self == PixelFormat.RGB24:
+            return 3
+        if self == PixelFormat.BGR24:
             return 3
         return 3
 

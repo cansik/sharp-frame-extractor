@@ -64,7 +64,7 @@ class SharpFrameExtractor:
 
         # internal defaults
         self._analysis_pixel_format = PixelFormat.GRAY
-        self._extraction_pixel_format = PixelFormat.RGB24
+        self._extraction_pixel_format = PixelFormat.BGR24
 
     def start(self):
         self._analyzer_pool.start()
@@ -269,7 +269,6 @@ class SharpFrameExtractor:
     def _calculate_block_size(
         width: int, height: int, channels: int, memory_limit_mb: int, safe_factor: float = 0.8
     ) -> int:
-        # RGB24 = 3 bytes per pixel
         frame_size_bytes = width * height * channels
         memory_limit_bytes = memory_limit_mb * 1024 * 1024
 

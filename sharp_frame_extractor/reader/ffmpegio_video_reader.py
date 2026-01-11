@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from typing import Iterator
 
+import cv2
 import ffmpegio
 import numpy as np
 
@@ -43,9 +44,19 @@ class FfmpegIoVideoReader(VideoReader):
         )
 
     def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
-        with ffmpegio.open(str(self._video_path), "rv", pix_fmt=pixel_format.value) as fin:
+        pix_fmt = pixel_format.value
+        conversion_method: int | None = None
+
+        # ffmpeg-io seems not to support bgr24
+        if pixel_format == PixelFormat.BGR24:
+            pix_fmt = PixelFormat.RGB24.value
+            conversion_method = cv2.COLOR_RGB2BGR
+
+        with ffmpegio.open(str(self._video_path), "rv", pix_fmt=pix_fmt) as fin:
             for frames in fin:
                 for frame in frames:
+                    if conversion_method is not None:
+                        frame = cv2.cvtColor(frame, conversion_method)
                     yield frame
 
     def release(self):
