@@ -26,7 +26,8 @@ from sharp_frame_extractor.models import (
     VideoFrameInfo,
 )
 from sharp_frame_extractor.output.frame_output_handler_base import FrameOutputHandlerBase
-from sharp_frame_extractor.video_reader import FfmpegIoVideoReader, PixelFormat, VideoReader, VideoReaderFactory
+from sharp_frame_extractor.reader.ffmpegio_video_reader import FfmpegIoVideoReader
+from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoReader, VideoReaderFactory
 from sharp_frame_extractor.worker.Future import Future
 
 

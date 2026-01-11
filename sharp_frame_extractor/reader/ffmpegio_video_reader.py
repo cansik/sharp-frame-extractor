@@ -1,58 +1,19 @@
 import math
 import platform
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Iterator, Callable, Type
+from typing import Iterator
 
 import ffmpegio
 import numpy as np
+
 from sharp_frame_extractor.memory.rolling_buffer import RollingBuffer
-
-
-class PixelFormat(Enum):
-    GRAY = "gray"
-    RGB24 = "rgb24"
-
-    @property
-    def channels(self) -> int:
-        if self == PixelFormat.GRAY:
-            return 1
-        if self == PixelFormat.RGB24:
-            return 3
-        return 3
-
-
-@dataclass
-class VideoInfo:
-    width: int
-    height: int
-    fps: float
-    duration: float
-    total_frames: int
-
-
-class VideoReader(ABC):
-    def __init__(self, video_path: str | Path):
-        self._video_path: Path = Path(video_path)
-
-    @abstractmethod
-    def probe(self) -> VideoInfo:
-        pass
-
-    @abstractmethod
-    def read_frames(self, chunk_size: int, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
-        """
-        Yields frames in batches of size `chunk_size`.
-        """
-        pass
-
-
-VideoReaderFactory = Callable[[str | Path], VideoReader] | Type[VideoReader]
+from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoInfo, VideoReader
 
 
 class FfmpegIoVideoReader(VideoReader):
+    FFMPEG_MIN_VERSION = 6
+    UNIX_OPTIMAL_CHUNK_SIZE = 32
+
     def __init__(self, video_path: str | Path):
         super().__init__(video_path)
         self._ffmpeg_version_compatibility_check()
@@ -87,7 +48,7 @@ class FfmpegIoVideoReader(VideoReader):
         # Windows optimization: read 1 frame at a time to improve performance
         # Unix/Mac: read larger blocks for less IPC overhead
         system = platform.system()
-        internal_block_size = 1 if system == "Windows" else max(32, chunk_size)
+        internal_block_size = 1 if system == "Windows" else min(self.UNIX_OPTIMAL_CHUNK_SIZE, chunk_size)
 
         rolling_buffer: RollingBuffer | None = None
 
@@ -126,5 +87,7 @@ class FfmpegIoVideoReader(VideoReader):
         ffmpeg_info = ffmpegio.ffmpeg_info()
         ffmpeg_version = ffmpeg_info["version"]
         major = int(ffmpeg_version.split(".")[0])
-        if major < 6:
-            raise Exception(f"ffmpeg version {ffmpeg_version} is maybe too old, successfully tested version is >=6.")
+        if major < FfmpegIoVideoReader.FFMPEG_MIN_VERSION:
+            raise Exception(
+                f"ffmpeg version {ffmpeg_version} is maybe too old, successfully tested version is >={FfmpegIoVideoReader.FFMPEG_MIN_VERSION}."
+            )
