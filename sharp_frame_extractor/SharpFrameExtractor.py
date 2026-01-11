@@ -176,7 +176,7 @@ class SharpFrameExtractor:
 
         # analysis run
         block_index = 0
-        for frames in batched_reader.read_frames(self._analysis_pixel_format):
+        for frames in batched_reader.read_frames(self._analysis_pixel_format, copy=False):
             # create shared memory
             shared_memory_ref = store.put(frames, worker_writeable=False)
 

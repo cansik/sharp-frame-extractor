@@ -14,9 +14,12 @@ class BatchedVideoReader(VideoReader):
     def probe(self) -> VideoInfo:
         return self._video_reader.probe()
 
-    def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat, copy: bool = True) -> Iterator[np.ndarray]:
         """
         Yields frames in batches of size `batch_size`.
+
+        :param copy: If True, yields a deep copy of the batch. If False, yields a reference to the internal buffer.
+                     Warning: When copy=False, the buffer is reused. The data must be processed before the next iteration.
         """
         # Pre-allocate buffer for better performance
         # We need to know frame shape first, so we peek the first frame
@@ -43,12 +46,12 @@ class BatchedVideoReader(VideoReader):
             count += 1
 
             if count == self._batch_size:
-                yield batch_buffer.copy()
+                yield batch_buffer.copy() if copy else batch_buffer
                 count = 0
 
         # Yield remaining frames
         if count > 0:
-            yield batch_buffer[:count].copy()
+            yield batch_buffer[:count].copy() if copy else batch_buffer[:count]
 
     def release(self):
         self._video_reader.release()
