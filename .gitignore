@@ -218,3 +218,4 @@ __marimo__/
 .DS_Store
 data
 .DS_Store
+*.dist

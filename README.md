@@ -23,7 +23,7 @@ Install:
 
 ```bash
 pip install sharp-frame-extractor
-````
+```
 
 Extract about 300 sharp frames from a video:
 
