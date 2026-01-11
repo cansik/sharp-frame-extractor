@@ -9,6 +9,7 @@ from statistics import mean, median, stdev
 from time import perf_counter
 from typing import Iterable
 
+import psutil
 from rich.box import SIMPLE
 from rich.console import Console
 from rich.progress import (
@@ -24,6 +25,10 @@ from rich.table import Table
 from sharp_frame_extractor.args_utils import default_concurrency, positive_float, positive_int
 from sharp_frame_extractor.models import ExtractionOptions
 from sharp_frame_extractor.output.file_output_handler import FileOutputHandler
+from sharp_frame_extractor.reader.av_video_reader import AvVideoReader
+from sharp_frame_extractor.reader.ffmpegio_video_reader import FfmpegIoVideoReader
+from sharp_frame_extractor.reader.opencv_video_reader import OpencvVideoReader
+from sharp_frame_extractor.reader.video_reader import VideoReaderFactory
 from sharp_frame_extractor.SharpFrameExtractor import ExtractionTask, SharpFrameExtractor
 
 
@@ -31,12 +36,24 @@ from sharp_frame_extractor.SharpFrameExtractor import ExtractionTask, SharpFrame
 class Scenario:
     name: str
     options: ExtractionOptions
+    video_reader_factory: VideoReaderFactory
+
+
+@dataclass
+class BenchmarkResult:
+    duration: float
+    cpu_usage: list[float]
+    memory_usage: list[float]
 
 
 def _format_seconds(s: float) -> str:
     if s < 1:
         return f"{s * 1000:.1f} ms"
     return f"{s:.3f} s"
+
+
+def _format_bytes(b: float) -> str:
+    return f"{b / 1024 / 1024:.1f} MB"
 
 
 def _safe_stdev(values: list[float]) -> float:
@@ -115,19 +132,29 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_scenarios(args: argparse.Namespace) -> list[Scenario]:
-    scenarios: list[Scenario] = [
-        Scenario(
-            name=f"every_small_{args.every_small:g}s",
-            options=ExtractionOptions.from_interval(args.every_small),
-        ),
-        Scenario(
-            name=f"every_large_{args.every_large:g}s",
-            options=ExtractionOptions.from_interval(args.every_large),
-        ),
+    readers = [
+        ("ffmpegio", FfmpegIoVideoReader),
+        ("opencv", OpencvVideoReader),
+        ("av", AvVideoReader),
     ]
 
-    # Add new scenarios here, for example:
-    # scenarios.append(Scenario("count_300", ExtractionOptions.from_count(300)))
+    scenarios: list[Scenario] = []
+
+    for reader_name, reader_factory in readers:
+        scenarios.append(
+            Scenario(
+                name=f"{reader_name}_every_small_{args.every_small:g}s",
+                options=ExtractionOptions.from_interval(args.every_small),
+                video_reader_factory=reader_factory,
+            )
+        )
+        scenarios.append(
+            Scenario(
+                name=f"{reader_name}_every_large_{args.every_large:g}s",
+                options=ExtractionOptions.from_interval(args.every_large),
+                video_reader_factory=reader_factory,
+            )
+        )
 
     return scenarios
 
@@ -147,63 +174,137 @@ def run_bench(
     workers: int,
     bench_root: Path,
     console: Console,
-) -> dict[str, list[float]]:
-    results: dict[str, list[float]] = {s.name: [] for s in scenarios}
+) -> dict[str, list[BenchmarkResult]]:
+    results: dict[str, list[BenchmarkResult]] = {s.name: [] for s in scenarios}
 
     output_handlers = [FileOutputHandler()]
     max_video_threads = max(1, min(jobs, 1))
 
     total_steps = runs * len(list(scenarios))
 
-    with SharpFrameExtractor(output_handlers, max_video_threads, workers) as sfe:
-        with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TimeElapsedColumn(),
-            TimeRemainingColumn(),
-            MofNCompleteColumn(),
-            console=console,
-        ) as progress:
-            overall_id = progress.add_task(description="benchmark runs", total=total_steps)
-            scenario_id = progress.add_task(description="scenario", total=runs)
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        MofNCompleteColumn(),
+        console=console,
+    ) as progress:
+        overall_id = progress.add_task(description="benchmark runs", total=total_steps)
+        scenario_id = progress.add_task(description="scenario", total=runs)
 
-            for scenario in scenarios:
-                progress.update(scenario_id, description=f"{scenario.name}", total=runs, completed=0)
+        for scenario in scenarios:
+            progress.update(scenario_id, description=f"{scenario.name}", total=runs, completed=0)
 
-                for run_idx in range(1, runs + 1):
-                    out_dir = bench_root / scenario.name / f"run_{run_idx:03d}"
-                    ensure_empty_dir(out_dir)
+            for run_idx in range(1, runs + 1):
+                out_dir = bench_root / scenario.name / f"run_{run_idx:03d}"
+                ensure_empty_dir(out_dir)
 
-                    task = ExtractionTask(video_path, out_dir, scenario.options)
+                task = ExtractionTask(video_path, out_dir, scenario.options)
 
-                    t0 = perf_counter()
+                # Resource monitoring setup
+                stop_event = [False]
+                import threading
+
+                cpu_data = []
+                mem_data = []
+
+                def monitor():
+                    main_p = psutil.Process()
+                    # Initialize main process cpu measurement
+                    main_p.cpu_percent(interval=None)
+
+                    # Cache process objects to maintain cpu_percent state
+                    # Key: pid, Value: psutil.Process object
+                    procs = {main_p.pid: main_p}
+
+                    while not stop_event[0]:
+                        # Discover new children
+                        try:
+                            children = main_p.children(recursive=True)
+                            for child in children:
+                                if child.pid not in procs:
+                                    # Initialize cpu measurement for new child
+                                    child.cpu_percent(interval=None)
+                                    procs[child.pid] = child
+                        except psutil.NoSuchProcess:
+                            pass  # Main process died?
+
+                        total_cpu = 0.0
+                        total_mem = 0
+
+                        # Collect stats
+                        # Use list to avoid runtime error if dict changes size (though we are in a thread, local dict)
+                        for pid, p in list(procs.items()):
+                            try:
+                                # cpu_percent is non-blocking with interval=None
+                                total_cpu += p.cpu_percent(interval=None)
+                                total_mem += p.memory_info().rss
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                # Process died
+                                del procs[pid]
+
+                        cpu_data.append(total_cpu)
+                        mem_data.append(total_mem)
+                        time.sleep(0.1)
+
+                monitor_thread = threading.Thread(target=monitor)
+                monitor_thread.start()
+
+                t0 = perf_counter()
+                with SharpFrameExtractor(
+                    output_handlers, max_video_threads, workers, video_reader_factory=scenario.video_reader_factory
+                ) as sfe:
                     _ = sfe.process([task])
-                    t1 = perf_counter()
+                t1 = perf_counter()
 
-                    results[scenario.name].append(t1 - t0)
+                stop_event[0] = True
+                monitor_thread.join()
 
-                    progress.advance(scenario_id, 1)
-                    progress.advance(overall_id, 1)
+                results[scenario.name].append(
+                    BenchmarkResult(
+                        duration=t1 - t0,
+                        cpu_usage=cpu_data,
+                        memory_usage=mem_data,
+                    )
+                )
+
+                progress.advance(scenario_id, 1)
+                progress.advance(overall_id, 1)
 
     return results
 
 
-def print_summary(console: Console, results: dict[str, list[float]]) -> None:
+def print_summary(console: Console, results: dict[str, list[BenchmarkResult]]) -> None:
     table = Table(title="Benchmark summary", box=SIMPLE)
     table.add_column("Scenario", no_wrap=True)
     table.add_column("Runs", justify="right")
-    table.add_column("Mean", justify="right")
-    table.add_column("Median", justify="right")
-    table.add_column("Std dev", justify="right")
-    table.add_column("Min", justify="right")
-    table.add_column("Max", justify="right")
+    table.add_column("Time (Mean)", justify="right")
+    table.add_column("Time (Median)", justify="right")
+    table.add_column("Time (Std dev)", justify="right")
+    table.add_column("CPU (Max)", justify="right")
+    table.add_column("CPU (Avg)", justify="right")
+    table.add_column("Mem (Max)", justify="right")
+    table.add_column("Mem (Avg)", justify="right")
 
-    for name, times in results.items():
+    for name, bench_results in results.items():
+        times = [r.duration for r in bench_results]
+
+        all_cpu = []
+        all_mem = []
+        for r in bench_results:
+            all_cpu.extend(r.cpu_usage)
+            all_mem.extend(r.memory_usage)
+
         m = mean(times)
         med = median(times)
         sd = _safe_stdev(times)
-        mn = min(times)
-        mx = max(times)
+
+        cpu_max = max(all_cpu) if all_cpu else 0
+        cpu_avg = mean(all_cpu) if all_cpu else 0
+
+        mem_max = max(all_mem) if all_mem else 0
+        mem_avg = mean(all_mem) if all_mem else 0
 
         table.add_row(
             name,
@@ -211,22 +312,13 @@ def print_summary(console: Console, results: dict[str, list[float]]) -> None:
             _format_seconds(m),
             _format_seconds(med),
             _format_seconds(sd),
-            _format_seconds(mn),
-            _format_seconds(mx),
+            f"{cpu_max:.1f}%",
+            f"{cpu_avg:.1f}%",
+            _format_bytes(mem_max),
+            _format_bytes(mem_avg),
         )
 
     console.print(table)
-
-    runs_table = Table(title="Per run timings", box=SIMPLE)
-    runs_table.add_column("Scenario", no_wrap=True)
-    runs_table.add_column("Run", justify="right")
-    runs_table.add_column("Time", justify="right")
-
-    for name, times in results.items():
-        for i, t in enumerate(times, start=1):
-            runs_table.add_row(name, str(i), _format_seconds(t))
-
-    console.print(runs_table)
 
 
 def main() -> None:

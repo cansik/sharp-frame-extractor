@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Iterator, Type
+from typing import Callable, Iterator, Self, Type
 
 import numpy as np
 
@@ -38,11 +38,21 @@ class VideoReader(ABC):
         pass
 
     @abstractmethod
-    def read_frames(self, chunk_size: int, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
         """
-        Yields frames in batches of size `chunk_size`.
+        Yields frames one by one.
         """
         pass
+
+    @abstractmethod
+    def release(self):
+        pass
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
 
 
 VideoReaderFactory = Callable[[str | Path], VideoReader] | Type[VideoReader]

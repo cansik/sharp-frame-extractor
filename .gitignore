@@ -219,3 +219,4 @@ __marimo__/
 data
 .DS_Store
 *.dist
+.sharp_frame_extractor_bench_tmp

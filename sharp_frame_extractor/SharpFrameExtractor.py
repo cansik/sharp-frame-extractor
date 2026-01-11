@@ -26,7 +26,8 @@ from sharp_frame_extractor.models import (
     VideoFrameInfo,
 )
 from sharp_frame_extractor.output.frame_output_handler_base import FrameOutputHandlerBase
-from sharp_frame_extractor.reader.ffmpegio_video_reader import FfmpegIoVideoReader
+from sharp_frame_extractor.reader.av_video_reader import AvVideoReader
+from sharp_frame_extractor.reader.batched_video_reader import BatchedVideoReader
 from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoReader, VideoReaderFactory
 from sharp_frame_extractor.worker.Future import Future
 
@@ -38,6 +39,7 @@ class SharpFrameExtractor:
         max_video_jobs: int | None = None,
         max_workers: int | None = None,
         memory_limit_mb: int | None = None,
+        max_bach_size: int = 32,
         video_reader_factory: VideoReaderFactory | None = None,
     ):
         default_jobs, default_workers = default_concurrency()
@@ -51,7 +53,8 @@ class SharpFrameExtractor:
         self.memory_limit_per_job_mb = max(
             MIN_MEMORY_LIMIT, math.ceil(self._total_memory_limit_mb / self._max_video_jobs)
         )
-        self._video_reader_factory: VideoReaderFactory = video_reader_factory or FfmpegIoVideoReader
+        self._max_bach_size = max_bach_size
+        self._video_reader_factory: VideoReaderFactory = video_reader_factory or AvVideoReader
 
         self._analyzer_pool = FrameAnalyzerWorkerPool(self._max_workers)
 
@@ -133,43 +136,47 @@ class SharpFrameExtractor:
         )
 
         # Distribute memory among the worker buffers
-        stream_block_size = max(1, possible_block_size // self._max_workers)
+        batch_size = min(self._max_bach_size, max(1, possible_block_size // self._max_workers))
 
         # setup progress bar for analysis
-        total_sub_tasks = int(math.ceil(video_info.total_frames / stream_block_size))
+        total_sub_tasks = int(math.ceil(video_info.total_frames / batch_size))
         self.on_task_event(TaskPreparedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
 
         # prepare shared memory store
-        buffer_size = video_info.width * video_info.height * self._analysis_pixel_format.channels * stream_block_size
+        buffer_size = video_info.width * video_info.height * self._analysis_pixel_format.channels * batch_size
 
         # limit buffers to max workers to prevent over-allocation
         with PooledSharedNDArrayStore(item_size=buffer_size, n_buffers=self._max_workers) as store:
             # analyze video first
             interval_ids, frame_ids, scores = self._analyze_frames(
-                video_reader, task, stream_block_size, frame_interval, store
+                video_reader, task, batch_size, frame_interval, store
             )
             self.on_task_event(TaskAnalyzedEvent(task, total_blocks=total_sub_tasks, total_frames=total_frames))
 
         # extraction run
-        self._extract_frames(video_reader, task, stream_block_size, interval_ids, frame_ids, scores)
+        self._extract_frames(video_reader, task, interval_ids, frame_ids, scores)
 
         self.on_task_event(TaskFinishedEvent(task))
+
+        video_reader.release()
         return ExtractionResult(task.task_id)
 
     def _analyze_frames(
         self,
         video_reader: VideoReader,
         task: ExtractionTask,
-        stream_block_size: int,
+        batch_size: int,
         frame_interval: int,
         store: SharedNDArrayStoreBase,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         submitted_tasks: list[Future] = []
         analysis_results: list[FrameAnalyzerResult] = []
 
+        batched_reader = BatchedVideoReader(video_reader, batch_size)
+
         # analysis run
         block_index = 0
-        for frames in video_reader.read_frames(stream_block_size, self._analysis_pixel_format):
+        for frames in batched_reader.read_frames(self._analysis_pixel_format):
             # create shared memory
             shared_memory_ref = store.put(frames, worker_writeable=False)
 
@@ -210,8 +217,6 @@ class SharpFrameExtractor:
     ):
         # append result to results list
         result = future.result()
-
-        # todo: do we have to be careful here (regarding thread-safety)?
         results.append(result)
 
         # release memory
@@ -222,7 +227,6 @@ class SharpFrameExtractor:
         self,
         video_reader: VideoReader,
         task: ExtractionTask,
-        stream_block_size: int,
         interval_ids: np.ndarray,
         frame_ids: np.ndarray,
         scores: np.ndarray,
@@ -231,30 +235,21 @@ class SharpFrameExtractor:
         for handler in self._output_handlers:
             handler.prepare_task(task)
 
-        global_start = 0  # first global frame index in current chunk
+        current_frame_idx = 0
+        target_idx = 0
+        num_targets = len(frame_ids)
 
-        for frames in video_reader.read_frames(stream_block_size, self._extraction_pixel_format):
-            block_len = len(frames)
-            if block_len == 0:
-                continue
+        if num_targets == 0:
+            return
 
-            block_end = global_start + block_len  # exclusive
+        next_target_frame = frame_ids[target_idx]
 
-            i0 = np.searchsorted(frame_ids, global_start, side="left")
-            i1 = np.searchsorted(frame_ids, block_end, side="left")
-
-            if i0 == i1:
-                global_start = block_end
-                continue
-
-            local_idxs = frame_ids[i0:i1] - global_start
-
-            for k, local_idx in zip(range(i0, i1), local_idxs):
-                frame_id = int(frame_ids[k])
-                interval_id = int(interval_ids[k])
-                score = float(scores[k])
-
-                frame = frames[int(local_idx)]
+        for frame in video_reader.read_frames(self._extraction_pixel_format):
+            if current_frame_idx == next_target_frame:
+                # Extract this frame
+                frame_id = int(frame_ids[target_idx])
+                interval_id = int(interval_ids[target_idx])
+                score = float(scores[target_idx])
 
                 frame_info = VideoFrameInfo(interval_index=interval_id, frame_index=frame_id, score=score, frame=frame)
                 for handler in self._output_handlers:
@@ -262,10 +257,13 @@ class SharpFrameExtractor:
 
                 self.on_block_event(BlockFrameExtracted(task=task, frame_info=frame_info))
 
-            global_start = block_end
+                # Move to next target
+                target_idx += 1
+                if target_idx >= num_targets:
+                    break
+                next_target_frame = frame_ids[target_idx]
 
-            if i1 >= frame_ids.size:
-                break
+            current_frame_idx += 1
 
     @staticmethod
     def _calculate_block_size(
