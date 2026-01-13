@@ -19,22 +19,33 @@ More context for this project is on [Behance](https://www.behance.net/gallery/11
 
 ## Quick start
 
-Install:
+The easiest way to run sharp-frame-extractor is using [uvx](https://docs.astral.sh/uv/guides/tools/), which is included with [uv](https://docs.astral.sh/uv/). uvx runs the tool in an isolated environment without requiring a manual virtual environment setup.
+
+First, [install uv](https://docs.astral.sh/uv/getting-started/installation/) once if you do not have it yet.
+
+Then run sharp-frame-extractor directly:
+
+```bash
+uvx sharp-frame-extractor input.mp4 --every 0.3
+```
+
+Outputs are written next to the input video by default, see [output](#output-directory) section below.
+
+### Install as a package
+
+If you prefer a traditional installation, you can install the package with pip:
 
 ```bash
 pip install sharp-frame-extractor
 ```
 
-Extract about 300 sharp frames from a video:
+Extract approximately 300 sharp frames from a video:
 
 ```bash
 sharp-frame-extractor input.mp4 --count 300
-```
 
-Extract one sharp frame every 0.25 seconds:
-
-```bash
-sharp-frame-extractor input.mp4 --every 0.25
+# If the command is not found, run as a module:
+python -m sharp_frame_extractor input.mp4 --count 300
 ```
 
 ## How it works
@@ -102,7 +113,7 @@ There are three main tuning knobs, with two layers of parallelism:
 
 * `-j/--jobs` (`max_video_jobs`) = how many videos are processed at the same time. Each job mainly acts as an orchestrator: it drives frame decoding and hands blocks to the analysis stage.
 * `-w/--workers` (`max_workers`) = how many analysis workers run in parallel. Workers are separate processes that perform the CPU intensive sharpness scoring and are shared across all jobs.
-* `-m/--memory-limit` (`memory_limit_mb`) = the total memory budget for frame buffers. This limit is split across active jobs, so increasing `--jobs` reduces the buffer size available per video.
+* `-m/--memory-limit` (`memory_limit_mb`) = the total memory budget for frame buffers. This limit is split across active jobs, so increasing `--jobs` reduces the buffer size available per video. Default memory limit is chosen automatically based on available RAM.
 
 How the pipeline behaves:
 
@@ -157,10 +168,10 @@ Options:
                         "<DIR>/<video_stem>/". (default: None)
   --count N             Target number of frames to extract per input video. (default: None)
   --every SECONDS       Extract one sharp frame every N seconds. Supports decimals, for example 0.25. (default: None)
-  -j, --jobs N          Max number of videos processed in parallel (video jobs). (default: 4)
-  -w, --workers N       Total analysis worker processes shared across all video jobs. (default: 8)
+  -j, --jobs N          Max number of videos processed in parallel (video jobs). (default: auto)
+  -w, --workers N       Total analysis worker processes shared across all video jobs. (default: auto)
   -m, --memory-limit MEMORY_MB
-                        Global memory limit for frame buffers in MB (shared across jobs). (default: 52428)
+                        Global memory limit for frame buffers in MB (shared across jobs). (default: auto)
                         
 Examples:
   Extract frames by target count:
