@@ -4,7 +4,17 @@ from typing import Iterator
 import cv2
 import numpy as np
 
-from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoInfo, VideoReader
+from sharp_frame_extractor.reader.video_reader import FrameHandle, PixelFormat, VideoInfo, VideoReader
+
+
+class OpencvFrameHandle(FrameHandle):
+    def to_ndarray(self) -> np.ndarray:
+        if self._target_pixel_format == PixelFormat.GRAY:
+            return cv2.cvtColor(self._native, cv2.COLOR_BGR2GRAY)
+        elif self._target_pixel_format == PixelFormat.RGB24:
+            return cv2.cvtColor(self._native, cv2.COLOR_BGR2RGB)
+
+        return self._native
 
 
 class OpencvVideoReader(VideoReader):
@@ -29,7 +39,7 @@ class OpencvVideoReader(VideoReader):
             total_frames=total_frames,
         )
 
-    def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat) -> Iterator[OpencvFrameHandle]:
         self._cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
         try:
@@ -38,12 +48,7 @@ class OpencvVideoReader(VideoReader):
                 if not ret:
                     break
 
-                if pixel_format == PixelFormat.GRAY:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                elif pixel_format == PixelFormat.RGB24:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-                yield frame
+                yield OpencvFrameHandle(frame, pixel_format)
         finally:
             pass
 

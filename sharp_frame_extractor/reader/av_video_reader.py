@@ -5,7 +5,12 @@ from typing import Iterator
 import av
 import numpy as np
 
-from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoInfo, VideoReader
+from sharp_frame_extractor.reader.video_reader import FrameHandle, PixelFormat, VideoInfo, VideoReader
+
+
+class AvFrameHandle(FrameHandle):
+    def to_ndarray(self) -> np.ndarray:
+        return self._native.to_ndarray(format=self._target_pixel_format.value)
 
 
 class AvVideoReader(VideoReader):
@@ -34,16 +39,12 @@ class AvVideoReader(VideoReader):
             total_frames=total_frames,
         )
 
-    def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat) -> Iterator[AvFrameHandle]:
         # Seek to start
         self._container.seek(0)
 
-        av_format = pixel_format.value
-
         for frame in self._container.decode(self._stream):
-            # Convert to numpy array
-            img = frame.to_ndarray(format=av_format)
-            yield img
+            yield AvFrameHandle(frame, pixel_format)
 
     def release(self):
         if self._container:

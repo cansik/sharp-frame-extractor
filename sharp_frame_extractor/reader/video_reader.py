@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Iterator, Self, Type
+from typing import Callable, Generic, Iterator, Self, Type, TypeVar
 
 import numpy as np
 
@@ -32,6 +32,19 @@ class VideoInfo:
     total_frames: int
 
 
+TNativeFrame = TypeVar("TNativeFrame")
+
+
+class FrameHandle(ABC, Generic[TNativeFrame]):
+    def __init__(self, native: TNativeFrame, target_pixel_format: PixelFormat):
+        self._native = native
+        self._target_pixel_format = target_pixel_format
+
+    @abstractmethod
+    def to_ndarray(self) -> np.ndarray:
+        raise NotImplementedError
+
+
 class VideoReader(ABC):
     def __init__(self, video_path: str | Path):
         self._video_path: Path = Path(video_path)
@@ -41,7 +54,7 @@ class VideoReader(ABC):
         pass
 
     @abstractmethod
-    def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat) -> Iterator[FrameHandle]:
         """
         Yields frames one by one.
         """

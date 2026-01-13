@@ -2,7 +2,12 @@ from typing import Iterator
 
 import numpy as np
 
-from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoInfo, VideoReader
+from sharp_frame_extractor.reader.video_reader import FrameHandle, PixelFormat, VideoInfo, VideoReader
+
+
+class BatchedFrameHandle(FrameHandle):
+    def to_ndarray(self) -> np.ndarray:
+        return self._native
 
 
 class BatchedVideoReader(VideoReader):
@@ -14,7 +19,7 @@ class BatchedVideoReader(VideoReader):
     def probe(self) -> VideoInfo:
         return self._video_reader.probe()
 
-    def read_frames(self, pixel_format: PixelFormat, copy: bool = True) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat, copy: bool = True) -> Iterator[BatchedFrameHandle]:
         """
         Yields frames in batches of size `batch_size`.
 
@@ -26,12 +31,13 @@ class BatchedVideoReader(VideoReader):
         iterator = self._video_reader.read_frames(pixel_format)
 
         try:
-            first_frame = next(iterator)
+            first_frame_handle = next(iterator)
         except StopIteration:
             return
 
         # Initialize buffer
         # Shape: (chunk_size, H, W, C) or (chunk_size, H, W)
+        first_frame = first_frame_handle.to_ndarray()
         frame_shape = first_frame.shape
         dtype = first_frame.dtype
 
@@ -41,17 +47,18 @@ class BatchedVideoReader(VideoReader):
         batch_buffer[0] = first_frame
         count = 1
 
-        for frame in iterator:
+        for frame_handle in iterator:
+            frame = frame_handle.to_ndarray()
             batch_buffer[count] = frame
             count += 1
 
             if count == self._batch_size:
-                yield batch_buffer.copy() if copy else batch_buffer
+                yield BatchedFrameHandle(batch_buffer.copy() if copy else batch_buffer, pixel_format)
                 count = 0
 
         # Yield remaining frames
         if count > 0:
-            yield batch_buffer[:count].copy() if copy else batch_buffer[:count]
+            yield BatchedFrameHandle(batch_buffer[:count].copy() if copy else batch_buffer[:count], pixel_format)
 
     def release(self):
         self._video_reader.release()

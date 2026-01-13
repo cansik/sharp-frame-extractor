@@ -176,8 +176,9 @@ class SharpFrameExtractor:
 
         # analysis run
         block_index = 0
-        for frames in batched_reader.read_frames(self._analysis_pixel_format, copy=False):
+        for frame_handles in batched_reader.read_frames(self._analysis_pixel_format, copy=False):
             # create shared memory
+            frames = frame_handles.to_ndarray()
             shared_memory_ref = store.put(frames, worker_writeable=False)
 
             # analyze video block
@@ -244,9 +245,11 @@ class SharpFrameExtractor:
 
         next_target_frame = frame_ids[target_idx]
 
-        for frame in video_reader.read_frames(self._extraction_pixel_format):
+        for frame_handle in video_reader.read_frames(self._extraction_pixel_format):
             if current_frame_idx == next_target_frame:
                 # Extract this frame
+                frame = frame_handle.to_ndarray()
+
                 frame_id = int(frame_ids[target_idx])
                 interval_id = int(interval_ids[target_idx])
                 score = float(scores[target_idx])

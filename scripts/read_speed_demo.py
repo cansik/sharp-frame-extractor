@@ -9,9 +9,9 @@ from rich.console import Console
 from rich.progress import Progress
 from rich.table import Table
 
+from scripts.reader.ffmpegio_video_reader import FfmpegIoVideoReader
 from sharp_frame_extractor.reader.av_video_reader import AvVideoReader
 from sharp_frame_extractor.reader.batched_video_reader import BatchedVideoReader
-from scripts.reader.ffmpegio_video_reader import FfmpegIoVideoReader
 from sharp_frame_extractor.reader.opencv_video_reader import OpencvVideoReader
 from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoReader
 
@@ -71,7 +71,9 @@ def run_scenario(scenario: Scenario, video_path: str, progress: Progress) -> Sce
     sample_interval = 10
     frame_count = 0
 
-    for batch in reader.read_frames(pixel_format=PixelFormat.RGB24):
+    for batch_handle in reader.read_frames(pixel_format=PixelFormat.RGB24):
+        batch = batch_handle.to_ndarray()
+
         # Handle both single frame (H,W,C) and batched (N,H,W,C)
         if batch.ndim == 4:
             n = batch.shape[0]

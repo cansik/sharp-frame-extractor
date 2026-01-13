@@ -7,7 +7,18 @@ import cv2
 import ffmpegio
 import numpy as np
 
-from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoInfo, VideoReader
+from sharp_frame_extractor.reader.video_reader import FrameHandle, PixelFormat, TNativeFrame, VideoInfo, VideoReader
+
+
+class FfmpegIoFrameHandle(FrameHandle):
+    def __init__(self, native: TNativeFrame, target_pixel_format: PixelFormat, conversion_method: int | None):
+        super().__init__(native, target_pixel_format)
+        self._conversion_method = conversion_method
+
+    def to_ndarray(self) -> np.ndarray:
+        if self._conversion_method is not None:
+            return cv2.cvtColor(self._native, self._conversion_method)
+        return self._native
 
 
 class FfmpegIoVideoReader(VideoReader):
@@ -43,7 +54,7 @@ class FfmpegIoVideoReader(VideoReader):
             total_frames=total_frames,
         )
 
-    def read_frames(self, pixel_format: PixelFormat) -> Iterator[np.ndarray]:
+    def read_frames(self, pixel_format: PixelFormat) -> Iterator[FfmpegIoFrameHandle]:
         pix_fmt = pixel_format.value
         conversion_method: int | None = None
 
@@ -55,9 +66,7 @@ class FfmpegIoVideoReader(VideoReader):
         with ffmpegio.open(str(self._video_path), "rv", pix_fmt=pix_fmt) as fin:
             for frames in fin:
                 for frame in frames:
-                    if conversion_method is not None:
-                        frame = cv2.cvtColor(frame, conversion_method)
-                    yield frame
+                    yield FfmpegIoFrameHandle(frame, pixel_format, conversion_method)
 
     def release(self):
         pass
