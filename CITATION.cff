@@ -4,7 +4,7 @@ authors:
   - family-names: "Bruggisser"
     given-names: "Florian"
     orcid: "https://orcid.org/0009-0003-0645-6746"
-    affiliation: "Zurich University of the Arts"
+    affiliation: "Independent Researcher"
 title: "sharp-frame-extractor"
 type: software
 version: "2.0.0"
