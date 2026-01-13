@@ -2,6 +2,8 @@
 
 Sharp Frame Extractor is a command line utility for sampling videos into still images using sharpness scoring. It processes the input in short time windows and writes the highest scoring frame from each window to disk, which is useful for photogrammetry, volumetric capture, and similar pipelines.
 
+![demo-dark](https://github.com/user-attachments/assets/674699c1-1be5-4cbe-9a61-7d3e2c20af47)
+
 Version 2 focuses on:
 - A simpler command line interface
 - Better sharpness scoring
