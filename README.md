@@ -185,7 +185,6 @@ Changes in version 2:
 * New command name and argument layout
 * Updated sharpness scoring
 * Better performance via improved parallelism and worker pool design
-* License change from `MIT` to `GPLv2` due to dependency changes.
 
 ```bash
 # v1
@@ -223,4 +222,5 @@ make autoformat
 
 ## About
 
-GPLv2 - Copyright (c) 2026 Florian Bruggisser
+Copyright (c) 2026 Florian Bruggisser  
+Released under the MIT License. See [LICENSE](LICENSE) for details.
