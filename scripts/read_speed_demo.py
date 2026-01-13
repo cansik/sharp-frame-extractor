@@ -11,7 +11,7 @@ from rich.table import Table
 
 from sharp_frame_extractor.reader.av_video_reader import AvVideoReader
 from sharp_frame_extractor.reader.batched_video_reader import BatchedVideoReader
-from sharp_frame_extractor.reader.ffmpegio_video_reader import FfmpegIoVideoReader
+from scripts.reader.ffmpegio_video_reader import FfmpegIoVideoReader
 from sharp_frame_extractor.reader.opencv_video_reader import OpencvVideoReader
 from sharp_frame_extractor.reader.video_reader import PixelFormat, VideoReader
 

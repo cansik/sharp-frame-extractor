@@ -26,7 +26,7 @@ from sharp_frame_extractor.args_utils import default_concurrency, positive_float
 from sharp_frame_extractor.models import ExtractionOptions
 from sharp_frame_extractor.output.file_output_handler import FileOutputHandler
 from sharp_frame_extractor.reader.av_video_reader import AvVideoReader
-from sharp_frame_extractor.reader.ffmpegio_video_reader import FfmpegIoVideoReader
+from scripts.reader.ffmpegio_video_reader import FfmpegIoVideoReader
 from sharp_frame_extractor.reader.opencv_video_reader import OpencvVideoReader
 from sharp_frame_extractor.reader.video_reader import VideoReaderFactory
 from sharp_frame_extractor.SharpFrameExtractor import ExtractionTask, SharpFrameExtractor

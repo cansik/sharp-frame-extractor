@@ -275,7 +275,6 @@ version = "2.0.0rc3"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
-    { name = "ffmpegio" },
     { name = "numpy" },
     { name = "opencv-python" },
     { name = "psutil" },
@@ -284,6 +283,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+benchmark = [
+    { name = "ffmpegio" },
+]
 dev = [
     { name = "ruff" },
 ]
@@ -294,7 +296,6 @@ lint = [
 [package.metadata]
 requires-dist = [
     { name = "av", specifier = ">=14.0.1" },
-    { name = "ffmpegio", specifier = ">=0.11.1" },
     { name = "numpy", specifier = ">=2.4.0" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "psutil", specifier = ">=7.2.1" },
@@ -303,6 +304,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+benchmark = [{ name = "ffmpegio", specifier = ">=0.11.1" }]
 dev = [{ name = "ruff", specifier = ">=0.14.8" }]
 lint = [{ name = "ruff", specifier = ">=0.14.8" }]
 
